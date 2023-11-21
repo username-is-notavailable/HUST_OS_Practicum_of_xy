@@ -13,6 +13,9 @@ typedef struct elf_info_t {
   process *p;
 } elf_info;
 
+Symbols symbols[1024];
+uint64 symbol_num;
+
 //
 // the implementation of allocater. allocates memory space for later segment loading
 //
@@ -101,6 +104,50 @@ static size_t parse_args(arg_buf *arg_bug_msg) {
   return pk_argc - arg;
 }
 
+// 
+// load the name of symbols from elf
+//
+elf_status elf_load_names_of_symbols(elf_ctx *ctx) {
+  uint64 shoff = ctx->ehdr.shoff;
+  uint16 shnum = ctx->ehdr.shnum;
+  uint8 found_symbol=0,found_strtab=0;
+  elf_section_header shstrhr, temp_sh, symbol_sh, strtab_sh;
+  symbol_table temp_sym;
+  if(elf_fpread(ctx, &shstrhr,sizeof(elf_section_header), shoff + ctx->ehdr.shstrndx*sizeof(elf_section_header)) != sizeof(elf_section_header)) panic("Error in elf_load_names_of_symbols when read shstrhr.\n");
+  char shstr[shstrhr.sh_size];
+  // sprint("%ulld\n",shstrhr.sh_size);
+  // sprint("%ulld\n",shstrhr.sh_offset);
+  if(elf_fpread(ctx, shstr, shstrhr.sh_size, shstrhr.sh_offset) != shstrhr.sh_size) panic("Error in elf_load_names_of_symbols when read shstr.\n");
+  //sprint("%s\n",shstr);
+  for(uint16 i=0;i<shnum;i++){
+    if(elf_fpread(ctx, &temp_sh, sizeof(elf_section_header), shoff + i*sizeof(elf_section_header))!=sizeof(elf_section_header)) panic("Error in elf_load_names_of_symbols when read shstr.\n");;
+    //sprint("%s\n",temp_sh.sh_name+shstr);
+    if(temp_sh.sh_type==SHT_SYMTAB){
+      symbol_sh=temp_sh;
+      found_symbol=1;
+    }
+    else if(temp_sh.sh_type==SHT_STRTAB&&!strcmp(temp_sh.sh_name+shstr,".strtab")){
+      strtab_sh=temp_sh;
+      found_strtab=1;
+    }
+    if (found_strtab&&found_symbol)break;
+  }
+  char symbolstr[strtab_sh.sh_size];
+  // sprint("%ulld\n",strtab_sh.sh_size);
+  if(elf_fpread(ctx, symbolstr, strtab_sh.sh_size, strtab_sh.sh_offset) != strtab_sh.sh_size) panic("Error in elf_load_names_of_symbols when read symbols.\n");
+  symbol_num=symbol_sh.sh_size/sizeof(symbol_table);
+  sprint("%lf\n",symbol_num);
+  for(int i=0;i<symbol_num;i++){
+    if(elf_fpread(ctx, &temp_sym, sizeof(symbol_table), symbol_sh.sh_offset + i *sizeof(symbol_table)) != sizeof(symbol_table)) panic("Error in elf_load_names_of_symbols when read temp_sym.\n");
+    strcpy(symbols[i].name,symbolstr + temp_sym.st_name);
+    //sprint(symbols[i].name);
+    symbols[i].value=temp_sym.st_value;
+    symbols[i].end=temp_sym.st_value+temp_sym.st_size;
+  }
+  // sprint("%s\n",symbolstr+1);
+  return EL_OK;
+}
+
 //
 // load the elf of user application, by using the spike file interface.
 //
@@ -129,6 +176,9 @@ void load_bincode_from_host_elf(process *p) {
 
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+
+  // load names of symbols from elf to print backtrace
+  if (elf_load_names_of_symbols(&elfloader) != EL_OK) panic("Fail on loading names of symbols.\n");
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
