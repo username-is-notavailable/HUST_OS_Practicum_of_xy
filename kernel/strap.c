@@ -60,9 +60,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // hint: first allocate a new physical page, and then, maps the new page to the
       // virtual address that causes the page fault.
       // panic( "You need to implement the operations that actually handle the page fault in lab2_3.\n" );
-      void *pa = alloc_page();
-      uint64 va = (stval>>PGSHIFT)<<PGSHIFT;
-      user_vm_map((pagetable_t)current->pagetable, va, PGSIZE, (uint64)pa,
+      user_vm_map((pagetable_t)current->pagetable, (stval>>PGSHIFT)<<PGSHIFT, PGSIZE, (uint64)alloc_page(),
          prot_to_type(PROT_WRITE | PROT_READ, 1));
       break;
     default:
@@ -79,8 +77,13 @@ void rrsched() {
   // hint: increase the tick_count member of current process by one, if it is bigger than
   // TIME_SLICE_LEN (means it has consumed its time slice), change its status into READY,
   // place it in the rear of ready queue, and finally schedule next process to run.
-  panic( "You need to further implement the timer handling in lab3_3.\n" );
-
+  // panic( "You need to further implement the timer handling in lab3_3.\n" );
+  if(++current->tick_count>=TIME_SLICE_LEN){
+    current->tick_count=0;
+    current->status=READY;
+    insert_to_ready_queue(current);
+    schedule();
+  }
 }
 
 //
