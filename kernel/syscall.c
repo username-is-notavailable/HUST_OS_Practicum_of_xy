@@ -14,6 +14,7 @@
 #include "vmm.h"
 #include "sched.h"
 #include "proc_file.h"
+#include "vfs.h"
 
 #include "spike_interface/spike_utils.h"
 
@@ -216,6 +217,30 @@ ssize_t sys_user_unlink(char * vfn){
 }
 
 //
+//  get path
+//
+ssize_t sys_user_rcwd(char* path) {
+  path=(char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)path);
+  get_path(path, current->pfiles->cwd);
+  int len=strlen(path);
+  if(len>1)
+    path[len-1]=0;
+  return 0;
+}
+
+//
+//  change cwd
+//
+ssize_t sys_user_ccwd(char *path) {
+  struct dentry *cwd=current->pfiles->cwd;
+  char missname[MAX_DENTRY_NAME_LEN];
+  path=(char*)user_va_to_pa((pagetable_t)(current->pagetable), (void*)path);
+  if((cwd=lookup_final_dentry(path,&cwd,missname)))
+    current->pfiles->cwd=cwd;
+  return 0;
+}
+
+//
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
@@ -263,6 +288,10 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_link((char *)a1, (char *)a2);
     case SYS_user_unlink:
       return sys_user_unlink((char *)a1);
+    case SYS_user_rcwd:
+      return sys_user_rcwd((char*)a1);
+    case SYS_user_ccwd:
+      return sys_user_ccwd((char*)a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

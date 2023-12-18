@@ -80,8 +80,16 @@ struct file *get_opened_file(int fd) {
 // return: -1 on failure; non-zero file-descriptor on success.
 //
 int do_open(char *pathname, int flags) {
+  char path[256];
+  memset(path,0,256);
+  if(pathname[0]!='/')
+    get_path(path,current->pfiles->cwd);
+  strcat(path,pathname);
+
+  // sprint("%s\n",path);
+
   struct file *opened_file = NULL;
-  if ((opened_file = vfs_open(pathname, flags)) == NULL) return -1;
+  if ((opened_file = vfs_open(path, flags)) == NULL) return -1;
 
   int fd = 0;
   if (current->pfiles->nfiles >= MAX_FILES) {
