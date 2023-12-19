@@ -190,6 +190,7 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   // panic( "You have to implement user_vm_unmap to free pages using naive_free in lab2_2.\n" );
   if(free){
     pte_t *PTE = page_walk(page_dir,va,0);
+    if(!PTE)panic("Try to free illegal virtual address!");
     uint64 pa = lookup_pa(page_dir, va);
     free_page((void*)pa);
     *PTE&=(~PTE_V);
