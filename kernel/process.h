@@ -3,6 +3,14 @@
 
 #include "riscv.h"
 
+typedef struct Symbols_t
+{
+  char name[256];
+  uint64 value;
+  uint64 end;
+}Symbols;
+
+
 typedef struct trapframe_t {
   // space to store context (all common registers)
   /* offset:0   */ riscv_regs regs;
@@ -21,6 +29,9 @@ typedef struct process_t {
   uint64 kstack;
   // trapframe storing the context of a (User mode) process.
   trapframe* trapframe;
+
+  Symbols symbols[1024];
+  uint64 symbol_num;
 }process;
 
 void switch_to(process*);

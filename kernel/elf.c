@@ -13,9 +13,6 @@ typedef struct elf_info_t {
   process *p;
 } elf_info;
 
-Symbols symbols[1024];
-uint64 symbol_num;
-
 //
 // the implementation of allocater. allocates memory space for later segment loading
 //
@@ -107,7 +104,7 @@ static size_t parse_args(arg_buf *arg_bug_msg) {
 // 
 // load the name of symbols from elf
 //
-elf_status elf_load_names_of_symbols(elf_ctx *ctx) {
+elf_status elf_load_names_of_symbols(elf_ctx *ctx,process *p) {
   uint64 shoff = ctx->ehdr.shoff;
   uint16 shnum = ctx->ehdr.shnum;
   uint8 found_symbol=0,found_strtab=0;
@@ -135,14 +132,14 @@ elf_status elf_load_names_of_symbols(elf_ctx *ctx) {
   char symbolstr[strtab_sh.sh_size];
   // sprint("%ulld\n",strtab_sh.sh_size);
   if(elf_fpread(ctx, symbolstr, strtab_sh.sh_size, strtab_sh.sh_offset) != strtab_sh.sh_size) panic("Error in elf_load_names_of_symbols when read symbols.\n");
-  symbol_num=symbol_sh.sh_size/sizeof(symbol_table);
-  sprint("%lf\n",symbol_num);
-  for(int i=0;i<symbol_num;i++){
+  p->symbol_num=symbol_sh.sh_size/sizeof(symbol_table);
+  sprint("%lf\n",p->symbol_num);
+  for(int i=0;i<p->symbol_num;i++){
     if(elf_fpread(ctx, &temp_sym, sizeof(symbol_table), symbol_sh.sh_offset + i *sizeof(symbol_table)) != sizeof(symbol_table)) panic("Error in elf_load_names_of_symbols when read temp_sym.\n");
-    strcpy(symbols[i].name,symbolstr + temp_sym.st_name);
+    strcpy(p->symbols[i].name,symbolstr + temp_sym.st_name);
     //sprint(symbols[i].name);
-    symbols[i].value=temp_sym.st_value;
-    symbols[i].end=temp_sym.st_value+temp_sym.st_size;
+    p->symbols[i].value=temp_sym.st_value;
+    p->symbols[i].end=temp_sym.st_value+temp_sym.st_size;
   }
   // sprint("%s\n",symbolstr+1);
   return EL_OK;
@@ -178,7 +175,7 @@ void load_bincode_from_host_elf(process *p) {
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
 
   // load names of symbols from elf to print backtrace
-  if (elf_load_names_of_symbols(&elfloader) != EL_OK) panic("Fail on loading names of symbols.\n");
+  if (elf_load_names_of_symbols(&elfloader,p) != EL_OK) panic("Fail on loading names of symbols.\n");
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;

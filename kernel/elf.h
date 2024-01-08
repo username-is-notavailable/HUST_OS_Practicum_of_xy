@@ -103,14 +103,6 @@ typedef struct symbol_table_t
 } symbol_table;
 
 
-typedef struct Symbols_t
-{
-  char name[256];
-  uint64 value;
-  uint64 end;
-}Symbols;
-
-
 
 #define ELF_MAGIC 0x464C457FU  // "\x7FELF" in little endian
 #define ELF_PROG_LOAD 1

@@ -14,9 +14,6 @@
 
 #include "spike_interface/spike_utils.h"
 
-extern Symbols symbols[1024];
-extern uint64 symbol_num;
-
 //
 // implement the SYS_user_print syscall
 //
@@ -41,12 +38,12 @@ ssize_t sys_user_print_backtrace(uint64 depth) {
   // sprint("%ulld\n\n", ra);
   for(int d=0;d<depth;d++, fp = *(uint64*)(fp-16)){
     // sprint("[%ulld]",fp);
-    for(int i=0;i<symbol_num;i++){
+    for(int i=0;i<current->symbol_num;i++){
       // sprint("%s %ulld\n",symbols[i].name,symbols[i].value);
       uint64 ra = *(uint64*)(fp-8);
-      if(ra>=symbols[i].value&&ra<=symbols[i].end){
-        sprint("%s\n",symbols[i].name);
-        if(!strcmp(symbols[i].name,"main"))
+      if(ra>=current->symbols[i].value&&ra<=current->symbols[i].end){
+        sprint("%s\n",current->symbols[i].name);
+        if(!strcmp(current->symbols[i].name,"main"))
           return i;
       }
     }
