@@ -46,7 +46,7 @@ struct frontend_stat {
   uint32 __unused4;
   uint32 __unused5;
 };
-
+//怎么没有注释QAQ
 void copy_stat(struct stat* dest, struct frontend_stat* src);
 spike_file_t* spike_file_open(const char* fn, int flags, int mode);
 int spike_file_close(spike_file_t* f);

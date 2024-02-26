@@ -194,6 +194,8 @@ endop:;
     //     sprint("%p %d %d\n", p->line[i].addr, p->line[i].line, p->line[i].file);
 }
 
+char debug_line[10240];
+
 //
 // load the elf segments to memory regions as we are in Bare mode in lab1
 //
@@ -214,6 +216,7 @@ elf_status elf_load(elf_ctx *ctx) {
 
     // allocate memory block before elf loading
     void *dest = elf_alloc_mb(ctx, ph_addr.vaddr, ph_addr.vaddr, ph_addr.memsz);
+    // sprint("%x\n", ph_addr.vaddr);
 
     // actual loading
     if (elf_fpread(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
@@ -228,11 +231,11 @@ elf_status elf_load(elf_ctx *ctx) {
     if (elf_fpread(ctx, (void *)&tempsh, sizeof(tempsh), off) != sizeof(tempsh)) return EL_EIO;
     // sprint("%s\n",shstr + tempsh.name);
     if (!strcmp(shstr + tempsh.name, ".debug_line")){
-        sprint("%s\n",shstr + tempsh.name);
-        char debug_line[tempsh.size];
+        // sprint("%s %d\n",shstr + tempsh.name, tempsh.size);
+        
         if(elf_fpread(ctx, debug_line, tempsh.size, tempsh.offset) != tempsh.size) return EL_EIO;
         make_addr_line(ctx, debug_line, tempsh.size);
-        sprint("OK\n");
+        // sprint("OK\n");
         break;
     }
   }
@@ -283,7 +286,7 @@ void load_bincode_from_host_elf(process *p) {
   // elf_info is defined above, used to tie the elf file and its corresponding process.
   elf_info info;
 
-  info.f = spike_file_open(arg_bug_msg.argv[0], O_RDONLY, 0);
+  info.f = spike_file_open(arg_bug_msg.argv[0], O_RDONLY, 0); //打开文件？
   info.p = p;
   // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
   if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
