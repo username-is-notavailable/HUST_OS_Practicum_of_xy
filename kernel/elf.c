@@ -221,12 +221,20 @@ elf_status elf_load(elf_ctx *ctx) {
   }
 //   sprint("here");
   if (elf_fpread(ctx, (void*)&shstrhr, sizeof(shstrhr), ctx->ehdr.shoff + ctx->ehdr.shstrndx*sizeof(shstrhr)) != sizeof(shstrhr))return EL_EIO;
-  char *shstr = elf_alloc_mb(ctx, shstrhr.addr, shstrhr.addr, shstrhr.size);
+  char shstr[shstrhr.size];
   if (elf_fpread(ctx, shstr, shstrhr.size, shstrhr.offset) != shstrhr.size)return EL_EIO;
   for (i = 0, off = ctx->ehdr.shoff; i < ctx->ehdr.shnum; i++, off += sizeof(tempsh)) {
     // read segment headers
     if (elf_fpread(ctx, (void *)&tempsh, sizeof(tempsh), off) != sizeof(tempsh)) return EL_EIO;
-    sprint("%s\n",shstr + tempsh.name);
+    // sprint("%s\n",shstr + tempsh.name);
+    if (!strcmp(shstr + tempsh.name, ".debug_line")){
+        sprint("%s\n",shstr + tempsh.name);
+        char debug_line[tempsh.size];
+        if(elf_fpread(ctx, debug_line, tempsh.size, tempsh.offset) != tempsh.size) return EL_EIO;
+        make_addr_line(ctx, debug_line, tempsh.size);
+        sprint("OK\n");
+        break;
+    }
   }
 
   return EL_OK;
