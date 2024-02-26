@@ -200,7 +200,7 @@ endop:;
 elf_status elf_load(elf_ctx *ctx) {
   // elf_prog_header structure is defined in kernel/elf.h
   elf_prog_header ph_addr;
-  elf_sect_header sh_addr;
+  elf_sect_header tempsh, shstrhr;
   int i, off;
 
   // traverse the elf program segment headers
@@ -219,10 +219,14 @@ elf_status elf_load(elf_ctx *ctx) {
     if (elf_fpread(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
       return EL_EIO;
   }
-  for (i = 0, off = ctx->ehdr.shoff; i < ctx->ehdr.shnum; i++, off += sizeof(sh_addr)) {
+//   sprint("here");
+  if (elf_fpread(ctx, (void*)&shstrhr, sizeof(shstrhr), ctx->ehdr.shoff + ctx->ehdr.shstrndx*sizeof(shstrhr)) != sizeof(shstrhr))return EL_EIO;
+  char *shstr = elf_alloc_mb(ctx, shstrhr.addr, shstrhr.addr, shstrhr.size);
+  if (elf_fpread(ctx, shstr, shstrhr.size, shstrhr.offset) != shstrhr.size)return EL_EIO;
+  for (i = 0, off = ctx->ehdr.shoff; i < ctx->ehdr.shnum; i++, off += sizeof(tempsh)) {
     // read segment headers
-    if (elf_fpread(ctx, (void *)&sh_addr, sizeof(sh_addr), off) != sizeof(sh_addr)) return EL_EIO;
-    
+    if (elf_fpread(ctx, (void *)&tempsh, sizeof(tempsh), off) != sizeof(tempsh)) return EL_EIO;
+    sprint("%s\n",shstr + tempsh.name);
   }
 
   return EL_OK;
