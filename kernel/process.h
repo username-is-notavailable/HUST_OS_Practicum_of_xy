@@ -91,6 +91,12 @@ typedef struct process_t {
   int tick_count;
 }process;
 
+typedef struct semaphores_t{
+  bool is_aviliable;
+  int64 sem;
+  process *wait_queue;
+}semaphores;
+
 // switch to run user app
 void switch_to(process*);
 

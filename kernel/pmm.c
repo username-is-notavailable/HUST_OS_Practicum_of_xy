@@ -4,6 +4,8 @@
 #include "config.h"
 #include "util/string.h"
 #include "memlayout.h"
+#include "syscall.h"
+#include "process.h"
 #include "spike_interface/spike_utils.h"
 
 // _end is defined in kernel/kernel.lds, it marks the ending (virtual) address of PKE kernel
@@ -11,6 +13,8 @@ extern char _end[];
 // g_mem_size is defined in spike_interface/spike_memory.c, it indicates the size of our
 // (emulated) spike machine. g_mem_size's value is obtained when initializing HTIF. 
 extern uint64 g_mem_size;
+
+extern semaphores sems[];
 
 static uint64 free_mem_start_addr;  //beginning address of free memory
 static uint64 free_mem_end_addr;    //end address of free memory (not included)
@@ -85,4 +89,7 @@ void pmm_init() {
   sprint("kernel memory manager is initializing ...\n");
   // create the list of free pages
   create_freepage_list(free_mem_start_addr, free_mem_end_addr);
+
+  uint64 i;
+  for(i=0;i<MAX_SEMAPHORES_NUM;i++)sems[i].is_aviliable=TRUE;
 }
