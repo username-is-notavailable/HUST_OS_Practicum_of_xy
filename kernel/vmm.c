@@ -10,6 +10,7 @@
 #include "util/string.h"
 #include "spike_interface/spike_utils.h"
 #include "util/functions.h"
+#include "process.h"
 
 /* --- utility functions for virtual address mapping --- */
 //
@@ -194,4 +195,194 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
     free_page((void*)pa);
     *PTE&=(~PTE_V);
   }
+}
+
+MCB *split_mem(MCB *p, uint64 size){
+  uint64 allocate_size = ((size-1)/8+1)*8;
+  // sprint("allcate_mem:%d  p_size:%d\n",allocate_size,p->size);
+  if(p->size<allocate_size)return NULL;
+  MCB *new_block=(MCB*)((void*)p+allocate_size);
+  if(IS_IN_SAME_PAGE(new_block,((uint64)(new_block+1)-1))){
+    new_block->size=p->size-allocate_size;
+    new_block->next=p->next;
+    new_block->va=p->va+allocate_size;
+    new_block->pre=p->pre;
+    p->pre->next=new_block;
+    if(p->next)p->next->pre=new_block;
+    p->next=NULL;
+    p->size=allocate_size;
+    p->pre=NULL;
+    if(p==current->mcb_tail)current->mcb_tail=new_block;
+    return p;
+  }
+  else{
+    void *next_page_va=(void*)(((((uint64)(p->va))>>PGSHIFT)+1)<<PGSHIFT);
+    allocate_size = (uint64)next_page_va-(uint64)p->va;
+    if(p->size-allocate_size>sizeof(MCB)){
+      new_block=(MCB*)user_va_to_pa(current->pagetable,next_page_va);
+      new_block->next=p->next;
+      new_block->pre=p->pre;
+      new_block->va=next_page_va;
+      new_block->size=p->size-allocate_size;
+      if(p->next)p->next->pre=new_block;
+      p->pre->next=new_block;
+      p->size=allocate_size;
+      p->next=p->pre=NULL;
+      if(p==current->mcb_tail)current->mcb_tail=new_block;
+      return p;
+    }
+  }
+  p->pre->next=p->next;
+  if(p->next)p->next->pre=p->pre;
+  p->next=NULL;
+  p->pre=NULL;
+  return p;
+}
+
+void *user_allocate_mem(uint64 n){
+  // sprint("%d\n",n);
+  MCB *p=current->mcbs.next, *new_block,*temp;
+  uint64 need_mem_size = ((n+sizeof(MCB)-1)/8+1)*8,pages,i,va;
+  void* pa;
+  // sprint("%x\n",p);
+  while (p){
+    // sprint("%lld\n",p->size);
+    if(p->size>=need_mem_size){
+      p=split_mem(p,need_mem_size);
+      break;
+    }
+    p=p->next;
+  }
+  if(!p){
+    // sprint("need:%d\n",need_mem_size);
+    if(current->mcb_tail->size+(uint64)current->mcb_tail->va==g_ufree_page){
+      // sprint("no exception\n");
+      pages=(need_mem_size-current->mcb_tail->size-1)/PGSIZE+1;
+      p=current->mcb_tail;
+      p->size+=pages*PGSIZE;
+    }
+    else{
+      pages=(need_mem_size-1)/PGSIZE;
+      // sprint("need:%d   need pages:%d\n",need_mem_size,pages);
+      p=(MCB*)alloc_page();
+      user_vm_map((pagetable_t)current->pagetable, g_ufree_page, PGSIZE, (uint64)p,
+         prot_to_type(PROT_WRITE | PROT_READ, 1));
+      p->next=NULL;
+      p->pre=current->mcb_tail;
+      p->size=(pages+1)*PGSIZE;
+      p->va=(void*)g_ufree_page;
+      current->mcb_tail->next=p;
+      current->mcb_tail=p;
+      g_ufree_page+=PGSIZE;
+      // sprint("here\n");
+    }
+    for(i=0;i<pages;i++,g_ufree_page+=PGSIZE){
+      pa=alloc_page();
+      user_vm_map((pagetable_t)current->pagetable, g_ufree_page, PGSIZE, (uint64)pa,
+         prot_to_type(PROT_WRITE | PROT_READ, 1));
+    }
+    // sprint("here\n");
+    p=split_mem(p,need_mem_size);
+    // sprint("p_size:%d",p->size);
+  }
+  return p->va+sizeof(MCB);
+    // {
+      // if(p->size-need_mem_size>sizeof(MCB)){
+      //   // new_block=(MCB*)((void*)p+need_mem_size);
+      //   // if((uint64)new_block>>PGSHIFT==((uint64)new_block+sizeof(MCB)-1)>>PGSHIFT){
+      //   //   new_block->size=p->size-need_mem_size;
+      //   //   new_block->next=p->next;
+      //   //   new_block->va=p->va+need_mem_size;
+      //   //   new_block->pre=p->pre;
+      //   //   p->next=NULL;
+      //   //   p->size=need_mem_size;
+      //   //   temp=p->pre;
+      //   //   p->pre=NULL;
+      //   //   temp->next=new_block;
+      //   //   if(p==current->mcb_tail)current->mcb_tail=new_block;
+      //   // }
+      //   // else{
+      //   //   void *next_page_va=(void*)(((((uint64)(p->va))>>PGSHIFT)+1)<<PGSHIFT);
+      //   //   uint64 alloc_mem = (uint64)next_page_va-(uint64)p->va;
+      //   //   if(p->size-alloc_mem>sizeof(MCB)){
+      //   //     new_block=(MCB*)user_va_to_pa(current->pagetable,next_page_va);
+      //   //     new_block->next=p->next;
+      //   //     new_block->pre=p->pre;
+      //   //     new_block->va=next_page_va;
+      //   //     new_block->size=p->size-alloc_mem;
+      //   //     p->size=alloc_mem;
+      //   //     p->next=p->pre=NULL;
+      //   //     new_block->pre->next=new_block;
+      //   //     if(p==current->mcb_tail)current->mcb_tail=new_block;
+      //   //   }
+      //   //   else goto whole;
+      //   }
+      // }
+      // else{
+      //   temp=p->pre;
+      //   temp->next=p->next;
+      //   p->next->pre=p->pre;
+      // }
+      // return (void*)(p+1);
+  //   }
+  // }
+  // i=0;
+  // va=g_ufree_page;
+  // pages=(need_mem_size-1)/PGSIZE+1;
+  // if(current->mcb_tail->va+current->mcb_tail->size!=(void*)g_ufree_page){
+  //   pa=alloc_page();
+  //   va=g_ufree_page;
+  //   user_vm_map((pagetable_t)current->pagetable, va, PGSIZE, (uint64)pa,
+  //        prot_to_type(PROT_WRITE | PROT_READ, 1));
+  //   new_block=(MCB*)pa;
+  //   new_block->size=pages*PGSIZE;
+  //   new_block->next=new_block->pre=NULL;
+  //   new_block->va=(void*)va;
+  //   p=new_block;
+  //   i++;
+  // }
+  // else{
+  //   p=current->mcb_tail;
+  //   current->mcb_tail=p->pre;
+  //   current->mcb_tail->next=NULL;
+  //   p->pre=NULL;
+  //   p->size+=pages+PGSIZE;
+  // }
+  // g_ufree_page+=pages*PGSIZE;
+  // for(;i<pages;i++){
+  //   pa=alloc_page();
+  //   user_vm_map((pagetable_t)current->pagetable, va+i*PGSIZE, PGSIZE, (uint64)pa,
+  //        prot_to_type(PROT_WRITE | PROT_READ, 1));
+  // }
+  // return (void*)(p+1);
+}
+
+uint64 user_free_mem(void* va){
+  MCB *pa=(MCB*)user_va_to_pa(current->pagetable,va)-1,*p=current->mcbs.next,*pre;
+  while(p&&p->va<pa->va)p=p->next;
+  if (p){
+    if(pa->va+pa->size==p->va){
+      pa->next=p->next;
+      pa->size+=p->size;
+      if(p->next)p->next->pre=pa;
+      pa->pre=p->pre;
+      p->pre->next=pa;
+    }
+    else{
+      pa->next=p;
+      p->pre->next=pa;
+      pa->pre=p->pre;
+      p->pre=pa;
+    }
+    pre=p->pre;
+  }
+  else pre=current->mcb_tail;
+
+  if(pre->va+pre->size==pa->va){
+    pre->next=pa->next;
+    pre->size+=pa->size;
+    if(pa->next)pa->next->pre=pre;
+  }
+  
+  return 0;
 }

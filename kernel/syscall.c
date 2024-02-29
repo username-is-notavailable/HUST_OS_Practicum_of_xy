@@ -69,9 +69,10 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_exit(a1);
     // added @lab2_2
     case SYS_user_allocate_page:
-      return sys_user_allocate_page();
+      // sprint("%d\n",a1);
+      return (uint64)user_allocate_mem(a1);
     case SYS_user_free_page:
-      return sys_user_free_page(a1);
+      return user_free_mem((void*)a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }
