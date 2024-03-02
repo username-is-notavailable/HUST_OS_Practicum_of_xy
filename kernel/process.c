@@ -200,7 +200,8 @@ int do_fork( process* parent)
 
         // convert free_pages_address into a filter to skip reclaimed blocks in the heap
         // when mapping the heap blocks
-        {int free_block_filter[MAX_HEAP_PAGES];
+      {
+        int free_block_filter[MAX_HEAP_PAGES];
         memset(free_block_filter, 0, MAX_HEAP_PAGES);
         uint64 heap_bottom = parent->user_heap.heap_bottom;
         for (int i = 0; i < parent->user_heap.free_pages_count; i++) {
@@ -223,8 +224,9 @@ int do_fork( process* parent)
         child->mapped_info[HEAP_SEGMENT].npages = parent->mapped_info[HEAP_SEGMENT].npages;
 
         // copy the heap manager from parent to child
-        memcpy((void*)&child->user_heap, (void*)&parent->user_heap, sizeof(parent->user_heap));}
+        memcpy((void*)&child->user_heap, (void*)&parent->user_heap, sizeof(parent->user_heap));
         break;
+      }
       case CODE_SEGMENT:
         // TODO (lab3_1): implment the mapping of child code segment to parent's
         // code segment.
@@ -254,4 +256,57 @@ int do_fork( process* parent)
   insert_to_ready_queue( child );
 
   return child->pid;
+}
+
+
+int do_exec(char* path){
+
+  // sprint("do_excu\n");
+
+  uint64 stack_top_page=(((current->trapframe->regs.sp)<<PGSHIFT)>>PGSHIFT);
+  uint64 i,heap_bottom;
+  int free_block_filter[MAX_HEAP_PAGES];
+  
+  memset(current->trapframe, 0, sizeof(trapframe));
+  current->kstack=((((current->kstack)>>PGSHIFT)+1)<<PGSHIFT);
+
+  for(i=1;i<current->mapped_info[STACK_SEGMENT].npages;i++,stack_top_page+=PGSIZE)
+    user_vm_unmap(current->pagetable,stack_top_page,PGSIZE,TRUE);
+  
+  current->mapped_info[STACK_SEGMENT].va = USER_STACK_TOP - PGSIZE;
+  current->mapped_info[STACK_SEGMENT].npages = 1;
+  current->mapped_info[STACK_SEGMENT].seg_type = STACK_SEGMENT;
+  current->trapframe->regs.sp = USER_STACK_TOP;
+
+  
+  memset(free_block_filter, 0, MAX_HEAP_PAGES);
+  heap_bottom = current->user_heap.heap_bottom;
+  for (int i = 0; i < current->user_heap.free_pages_count; i++) {
+    int index = (current->user_heap.free_pages_address[i] - heap_bottom) / PGSIZE;
+    free_block_filter[index] = 1;
+  }
+
+  // clean and unmap the heap blocks
+  for (uint64 heap_block = current->user_heap.heap_bottom;
+        heap_block < current->user_heap.heap_top; heap_block += PGSIZE) {
+    if (free_block_filter[(heap_block - heap_bottom) / PGSIZE])  // skip free blocks
+      continue;
+
+    user_vm_unmap(current->pagetable,heap_block,PGSIZE,TRUE);
+  }
+
+  current->user_heap.heap_top = USER_FREE_ADDRESS_START;
+  current->user_heap.heap_bottom = USER_FREE_ADDRESS_START;
+  current->user_heap.free_pages_count = 0;
+
+  // map user heap in userspace
+  current->mapped_info[HEAP_SEGMENT].va = USER_FREE_ADDRESS_START;
+  current->mapped_info[HEAP_SEGMENT].npages = 0;  // no pages are mapped to heap yet.
+  current->mapped_info[HEAP_SEGMENT].seg_type = HEAP_SEGMENT;
+
+  load_bincode_from_host_elf_by_path(current, path);
+
+  insert_to_ready_queue(current);
+  schedule();
+  return 0;
 }

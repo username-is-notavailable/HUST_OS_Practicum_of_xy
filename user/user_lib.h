@@ -22,6 +22,7 @@ int lseek_u(int fd, int offset, int whence);
 int stat_u(int fd, struct istat *istat);
 int disk_stat_u(int fd, struct istat *istat);
 int close(int fd);
+int exec(const char *path);
 
 // added @ lab4_2
 int opendir_u(const char *pathname);
