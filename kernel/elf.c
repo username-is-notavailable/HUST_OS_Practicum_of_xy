@@ -15,6 +15,11 @@ typedef struct elf_info_t {
   process *p;
 } elf_info;
 
+typedef struct elf_info_vfs_t {
+  struct file *f;
+  process *p;
+} elf_info_vfs;
+
 //
 // the implementation of allocater. allocates memory space for later segment loading.
 // this allocater is heavily modified @lab2_1, where we do NOT work in bare mode.
@@ -41,7 +46,27 @@ static uint64 elf_fpread(elf_ctx *ctx, void *dest, uint64 nb, uint64 offset) {
   // call spike file utility to load the content of elf file into memory.
   // spike_file_pread will read the elf file (msg->f) from offset to memory (indicated by
   // *dest) for nb bytes.
+  // int r=spike_file_pread(msg->f, dest, nb, offset);
+  // sprint("offset:%x elf_fpread_vfs_offset:%x elf_fpread_vfs:%x nb:%x\n",offset,offset+nb,*((uint64*)dest),nb);
+  // return r;
   return spike_file_pread(msg->f, dest, nb, offset);
+}
+
+//
+// actual file reading, using the vfs file interface.
+//
+static uint64 elf_fpread_vfs(elf_ctx *ctx, void *dest, uint64 nb, uint64 offset) {
+  elf_info_vfs *msg = (elf_info_vfs *)ctx->info;
+  // call spike file utility to load the content of elf file into memory.
+  // spike_file_pread will read the elf file (msg->f) from offset to memory (indicated by
+  // *dest) for nb bytes.
+  // int temp=msg->f->offset;
+  // msg->f->offset=offset;
+  vfs_lseek(msg->f,offset,SEEK_SET);
+  return vfs_read(msg->f, dest, nb);
+  // sprint("offset:%x elf_fpread_vfs_offset:%x elf_fpread_vfs:%x nb:%x\n",offset,msg->f->offset,*((uint64*)dest),nb);
+  // msg->f->offset=temp;
+  // return r;
 }
 
 //
@@ -60,6 +85,21 @@ elf_status elf_init(elf_ctx *ctx, void *info) {
 }
 
 //
+// init elf_ctx, a data structure that loads the elf.
+//
+elf_status elf_init_vfs(elf_ctx *ctx, void *info) {
+  ctx->info = info;
+
+  // load the elf header
+  if (elf_fpread_vfs(ctx, &ctx->ehdr, sizeof(ctx->ehdr), 0) != sizeof(ctx->ehdr)) return EL_EIO;
+
+  // check the signature (magic value) of the elf
+  if (ctx->ehdr.magic != ELF_MAGIC) return EL_NOTELF;
+
+  return EL_OK;
+}
+
+//
 // load the elf segments to memory regions.
 //
 elf_status elf_load(elf_ctx *ctx) {
@@ -67,17 +107,21 @@ elf_status elf_load(elf_ctx *ctx) {
   elf_prog_header ph_addr;
   int i, off;
 
+  // sprint("ehdr.phnum:%x\n",ctx->ehdr.phnum);
   // traverse the elf program segment headers
   for (i = 0, off = ctx->ehdr.phoff; i < ctx->ehdr.phnum; i++, off += sizeof(ph_addr)) {
+    // sprint("offset:%x, i:%d\n",off,i);
     // read segment headers
     if (elf_fpread(ctx, (void *)&ph_addr, sizeof(ph_addr), off) != sizeof(ph_addr)) return EL_EIO;
 
-    if (ph_addr.type != ELF_PROG_LOAD) continue;
+    if (ph_addr.type != ELF_PROG_LOAD) /*{sprint("ELF_PROG_LOAD\n");*/continue;/*}*/
     if (ph_addr.memsz < ph_addr.filesz) return EL_ERR;
     if (ph_addr.vaddr + ph_addr.memsz < ph_addr.vaddr) return EL_ERR;
 
     // allocate memory block before elf loading
     void *dest = elf_alloc_mb(ctx, ph_addr.vaddr, ph_addr.vaddr, ph_addr.memsz);
+
+    // sprint("ph_addr.off:%x\n",ph_addr.off);
 
     // actual loading
     if (elf_fpread(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
@@ -102,6 +146,59 @@ elf_status elf_load(elf_ctx *ctx) {
       panic( "unknown program segment encountered, segment flag:%d.\n", ph_addr.flags );
 
     ((process*)(((elf_info*)(ctx->info))->p))->total_mapped_region ++;
+  }
+
+  return EL_OK;
+}
+
+//
+// load the elf segments to memory regions.
+//
+elf_status elf_load_vfs(elf_ctx *ctx) {
+  // elf_prog_header structure is defined in kernel/elf.h
+  elf_prog_header ph_addr;
+  int i, off;
+  // sprint("ehdr.phnum:%x\n",ctx->ehdr.phnum);
+
+  // sprint("Something wrong\n");
+  // traverse the elf program segment headers
+  for (i = 0, off = ctx->ehdr.phoff; i < ctx->ehdr.phnum; i++, off += sizeof(ph_addr)) {
+    // read segment headers
+    // sprint("offset:%x, i:%d\n",off,i);
+    if (elf_fpread_vfs(ctx, (void *)&ph_addr, sizeof(ph_addr), off) != sizeof(ph_addr)) return EL_EIO;
+
+    if (ph_addr.type != ELF_PROG_LOAD) /*{sprint("ELF_PROG_LOAD\n");*/continue;/*}*/
+    if (ph_addr.memsz < ph_addr.filesz) return EL_ERR;
+    if (ph_addr.vaddr + ph_addr.memsz < ph_addr.vaddr) return EL_ERR;
+
+    // allocate memory block before elf loading
+    void *dest = elf_alloc_mb(ctx, ph_addr.vaddr, ph_addr.vaddr, ph_addr.memsz);
+
+    // sprint("ph_addr.off:%x\n",ph_addr.off);
+    // actual loading
+    if (elf_fpread_vfs(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
+      return EL_EIO;
+
+    // record the vm region in proc->mapped_info. added @lab3_1
+    int j;
+    for( j=0; j<PGSIZE/sizeof(mapped_region); j++ ) //seek the last mapped region
+      if( (process*)(((elf_info*)(ctx->info))->p)->mapped_info[j].va == 0x0 ) break;
+
+    ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].va = ph_addr.vaddr;
+    ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].npages = 1;
+
+    // SEGMENT_READABLE, SEGMENT_EXECUTABLE, SEGMENT_WRITABLE are defined in kernel/elf.h
+    if( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_EXECUTABLE) ){
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = CODE_SEGMENT;
+      sprint( "CODE_SEGMENT added at mapped info offset:%d\n", j );
+    }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = DATA_SEGMENT;
+      sprint( "DATA_SEGMENT added at mapped info offset:%d\n", j );
+    }else
+      panic( "unknown program segment encountered, segment flag:%d.\n", ph_addr.flags );
+
+    ((process*)(((elf_info*)(ctx->info))->p))->total_mapped_region ++;
+    // sprint("Something wrong\n");
   }
 
   return EL_OK;
@@ -171,8 +268,44 @@ void load_bincode_from_host_elf(process *p) {
   sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
 }
 
-void load_bincode_from_host_elf_by_path(process *p, char *path){
+void load_bincode_from_host_elf_t(process *p) {
+  arg_buf arg_bug_msg;
+
+  // retrieve command line arguements
+  size_t argc = parse_args(&arg_bug_msg);
+  if (!argc) panic("You need to specify the application program!\n");
+
+  sprint("Application: %s\n", arg_bug_msg.argv[0]);
+
+  //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
+  elf_ctx elfloader;
+  // elf_info is defined above, used to tie the elf file and its corresponding process.
+  elf_info_vfs info;
+
+  info.f = vfs_open(arg_bug_msg.argv[0], O_RDONLY);
+  info.p = p;
+  // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
+  if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
+
+  // init elfloader context. elf_init() is defined above.
+  if (elf_init_vfs(&elfloader, &info) != EL_OK)
+    panic("fail to init elfloader.\n");
+
+  // load elf. elf_load() is defined above.
+  if (elf_load_vfs(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+
+  // entry (virtual, also physical in lab1_x) address
+  p->trapframe->epc = elfloader.ehdr.entry;
+
+  // close the host spike file
+  vfs_close( info.f );
+
+  sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
+}
+
+void load_bincode_from_host_elf_by_vfs(process *p, char *path){
   // arg_buf arg_bug_msg;
+  // sprint("Where is the error?\n");
 
   // // retrieve command line arguements
   // size_t argc = parse_args(&arg_bug_msg);
@@ -183,26 +316,27 @@ void load_bincode_from_host_elf_by_path(process *p, char *path){
   //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
   elf_ctx elfloader;
   // elf_info is defined above, used to tie the elf file and its corresponding process.
-  elf_info info;
+  elf_info_vfs info;
 
-  info.f = spike_file_open(path, O_RDONLY, 0);
-  sprint("%s\n",path);
+  info.f = vfs_open(path, O_RDONLY);
+  // sprint("%s\n",path);
   info.p = p;
   // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
   if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
+  // sprint("Where is the error?\n");
 
   // init elfloader context. elf_init() is defined above.
-  if (elf_init(&elfloader, &info) != EL_OK)
+  if (elf_init_vfs(&elfloader, &info) != EL_OK)
     panic("fail to init elfloader.\n");
-
+  // sprint("Where is the error?\n");
   // load elf. elf_load() is defined above.
-  if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+  if (elf_load_vfs(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
 
   // close the host spike file
-  spike_file_close( info.f );
+  vfs_close( info.f );
 
   // sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
 }
