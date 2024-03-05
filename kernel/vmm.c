@@ -38,8 +38,10 @@ uint64 prot_to_type(int prot, int user) {
   if (prot & PROT_READ) perm |= PTE_R | PTE_A;
   if (prot & PROT_WRITE) perm |= PTE_W | PTE_D;
   if (prot & PROT_EXEC) perm |= PTE_X | PTE_A;
+  if (prot & PROT_COW) perm |= PTE_COW;
   if (perm == 0) perm = PTE_R;
   if (user) perm |= PTE_U;
+  // if(perm&PTE_COW)sprint("corrent\n");
   return perm;
 }
 
@@ -188,12 +190,10 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   // as naive_free reclaims only one page at a time, you only need to consider one page
   // to make user/app_naive_malloc to behave correctly.
   // panic( "You have to implement user_vm_unmap to free pages using naive_free in lab2_2.\n" );
-  if(free){
     pte_t *PTE = page_walk(page_dir,va,0);
     uint64 pa = lookup_pa(page_dir, va);
-    free_page((void*)pa);
+    if(free)free_page((void*)pa);
     *PTE&=(~PTE_V);
-  }
 }
 
 //

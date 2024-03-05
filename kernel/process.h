@@ -59,6 +59,8 @@ typedef struct process_heap_manager {
   uint64 free_pages_address[MAX_HEAP_PAGES];
   // the number of free pages in the heap
   uint32 free_pages_count;
+
+  // uint64 references_count;
 }process_heap_manager;
 
 // the extremely simple definition of process, used for begining labs of PKE
