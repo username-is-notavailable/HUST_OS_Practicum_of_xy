@@ -93,6 +93,8 @@ typedef struct process_t {
 
   // file system. added @lab4_1
   proc_file_management *pfiles;
+
+  int waiting_for_child;
 }process;
 
 // switch to run user app
@@ -106,6 +108,10 @@ process* alloc_process();
 int free_process( process* proc );
 // fork a child from parent
 int do_fork(process* parent);
+
+int do_exec(char *command, char *para);
+
+uint64 do_wait(uint64 pid);
 
 // current running process
 extern process* current;

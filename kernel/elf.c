@@ -137,3 +137,40 @@ void load_bincode_from_host_elf(process *p, char *filename) {
 
   sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
 }
+
+void load_bincode_from_host_elf_with_para(process *p, char *filename, char *para) {
+  sprint("Application: %s\n", filename);
+
+  //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
+  elf_ctx elfloader;
+  // elf_info is defined above, used to tie the elf file and its corresponding process.
+  elf_info info;
+
+  info.f = vfs_open(filename, O_RDONLY);
+  info.p = p;
+  // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
+  if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
+
+  // init elfloader context. elf_init() is defined above.
+  if (elf_init(&elfloader, &info) != EL_OK)
+    panic("fail to init elfloader.\n");
+
+  // load elf. elf_load() is defined above.
+  if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+
+  // entry (virtual, also physical in lab1_x) address
+  p->trapframe->epc = elfloader.ehdr.entry;
+
+  int len = (strlen(para)/8+1)*8;
+  uint64 sp=(p->trapframe->regs.sp-=len);
+  strcpy((char*)user_va_to_pa(p->pagetable,(void*)sp),para);
+  sp=(p->trapframe->regs.sp-=8);
+  (*(uint64*)user_va_to_pa(p->pagetable,(void*)sp))=sp+8;
+  p->trapframe->regs.a0=1;
+  p->trapframe->regs.a1=sp;
+
+  // close the vfs file
+  vfs_close( info.f );
+
+  sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
+}
