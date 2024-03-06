@@ -16,6 +16,7 @@
 #include "pmm.h"
 #include "memlayout.h"
 #include "sched.h"
+#include "util/functions.h"
 #include "spike_interface/spike_utils.h"
 
 //Two functions defined in kernel/usertrap.S
@@ -285,7 +286,7 @@ void reallocate_process(process* p){
   }
 
   user_vm_unmap(p->pagetable,(uint64)(p->trapframe),PGSIZE,TRUE);
-  free_page((void*)(p->kstack-PGSIZE));
+  free_page((void*)ROUNDDOWN(p->kstack-1,PGSIZE));
   free_page((void*)p->mapped_info);
 
   // sprint("Something wrong\n");
