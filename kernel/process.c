@@ -264,7 +264,7 @@ int do_fork( process* parent)
 
 void reallocate_process(process* p){
 
-  for(uint64 i=((p->trapframe->regs.sp)>>PGSHIFT)<<PGSHIFT;
+  for(uint64 i=ROUNDDOWN(p->trapframe->regs.sp,PGSIZE);
     i<USER_STACK_TOP;i+=PGSIZE)
     user_vm_unmap(p->pagetable,i,PGSIZE,TRUE);
   
