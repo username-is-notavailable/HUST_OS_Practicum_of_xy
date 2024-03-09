@@ -13,6 +13,6 @@
 // the ending physical address that PKE observes. added @lab2_1
 #define PHYS_TOP (DRAM_BASE + PKE_MAX_ALLOWABLE_RAM)
 
-#define MAX_SYMBOL 64
+#define MAX_SYMBOL 512
 
 #endif

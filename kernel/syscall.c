@@ -235,17 +235,17 @@ ssize_t sys_user_wait(uint64 pid){
 // lib call to backtrace
 //
 ssize_t sys_user_print_backtrace(uint64 depth) {
-  uint64 fp = *(uint64*)(current->trapframe->regs.s0 - 8);
-  uint64 user_sp = current->trapframe->kernel_sp;
-  // sprint("%ulld\n\n", ra);
-  for(int d=0;d<depth;d++, fp = *(uint64*)(fp-16)){
+  // sprint("************************\n");
+  uint64 fp = *(uint64*)user_va_to_pa(current->pagetable,(void*)(current->trapframe->regs.s0 - 8));
+  // sprint("%lx\n", fp);
+  for(int d=0;d<depth;d++, fp = *(uint64*)user_va_to_pa(current->pagetable,(void*)(fp-16))){
     // sprint("[%ulld]",fp);
     for(int i=0;i<current->symbol_num;i++){
       // sprint("%s %ulld\n",symbols[i].name,symbols[i].value);
-      uint64 ra = *(uint64*)(fp-8);
+      uint64 ra = *(uint64*)user_va_to_pa(current->pagetable,(void*)(fp-8));
       if(ra>=current->symbols[i].value&&ra<=current->symbols[i].end){
         sprint("%s\n",current->symbols_names + current->symbols[i].name);
-        if(!strcmp(current->symbols[i].name,"main"))
+        if(!strcmp(current->symbols_names + current->symbols[i].name,"main"))
           return i;
       }
     }

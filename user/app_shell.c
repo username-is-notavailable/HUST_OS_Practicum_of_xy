@@ -7,7 +7,16 @@
 #include "string.h"
 #include "util/types.h"
 
+void f1(){print_backtrace(10);}
+void f2(){f1();}
+void f3(){f2();}
+void f4(){f3();}
+void f5(){f4();}
+void f6(){f5();}
+
+
 int main(int argc, char *argv[]) {
+  f6();
   printu("\n======== Shell Start ========\n\n");
   int fd;
   int MAXBUF = 1024;

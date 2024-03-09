@@ -129,6 +129,8 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
 
+  if (elf_load_names_of_symbols(&elfloader,p) != EL_OK)panic("Fail on loading symbols.\n");
+
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
 
@@ -206,14 +208,14 @@ elf_status elf_load_names_of_symbols(elf_ctx *ctx,process *p) {
     if (found_strtab&&found_symbol)break;
   }
   void* symbolstr = alloc_page();
-  // sprint("%ulld\n",strtab_sh.sh_size);
+  sprint("%lld\n",strtab_sh.sh_size);
   if(elf_fpread(ctx, symbolstr, strtab_sh.sh_size, strtab_sh.sh_offset) != strtab_sh.sh_size) panic("Error in elf_load_names_of_symbols when read symbols.\n");
   p->symbol_num=symbol_sh.sh_size/sizeof(symbol_table);
   // sprint("%lf\n",p->symbol_num);
   for(int i=0;i<p->symbol_num;i++){
     if(elf_fpread(ctx, &temp_sym, sizeof(symbol_table), symbol_sh.sh_offset + i *sizeof(symbol_table)) != sizeof(symbol_table)) panic("Error in elf_load_names_of_symbols when read temp_sym.\n");
     // strcpy(p->symbols[i].name,symbolstr + temp_sym.st_name);
-    //sprint(symbols[i].name);
+    // sprint("%d: %s\n",i,temp_sym.st_name+symbolstr);
     p->symbols[i].name=temp_sym.st_name;
     p->symbols[i].value=temp_sym.st_value;
     p->symbols[i].end=temp_sym.st_value+temp_sym.st_size;

@@ -122,18 +122,11 @@ typedef struct elf_ctx_t {
   elf_header ehdr;
 } elf_ctx;
 
-typedef struct symbol_t
-{
-  uint64 name;
-  uint64 value;
-  uint64 end;
-}symbol;
-
-
 elf_status elf_init(elf_ctx *ctx, void *info);
 elf_status elf_load(elf_ctx *ctx);
 
 void load_bincode_from_host_elf(process *p, char *filename);
 void load_bincode_from_host_elf_with_para(process *p, char *filename, char *para);
+elf_status elf_load_names_of_symbols(elf_ctx *ctx,process *p);
 
 #endif

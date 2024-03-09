@@ -62,6 +62,13 @@ typedef struct process_heap_manager {
   uint32 free_pages_count;
 }process_heap_manager;
 
+typedef struct symbol_t
+{
+  uint64 name;
+  uint64 value;
+  uint64 end;
+}symbol;
+
 // the extremely simple definition of process, used for begining labs of PKE
 typedef struct process_t {
   // pointing to the stack used in trap handling.
