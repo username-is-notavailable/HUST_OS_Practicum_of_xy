@@ -95,6 +95,12 @@ typedef struct process_t {
   proc_file_management *pfiles;
 
   int waiting_for_child;
+
+  symbol symbols[MAX_SYMBOL];
+
+  uint64 symbol_num;
+
+  char *symbols_names;
 }process;
 
 // switch to run user app

@@ -181,3 +181,10 @@ int exec(char *command, char *para) {
 int wait(int pid) {
   return do_user_call(SYS_user_wait, pid, 0, 0, 0, 0, 0, 0);
 }
+
+//
+// lib call to wait
+//
+int print_backtrace(int depth) {
+  return do_user_call(SYS_user_backtrace, depth, 0, 0, 0, 0, 0, 0);
+}
