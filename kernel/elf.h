@@ -104,6 +104,19 @@ typedef struct symbol_table_t
   uint64	st_size;		/* Symbol size */
 } symbol_table; 
 
+// compilation units header (in debug line section)
+typedef struct __attribute__((packed)) {
+    uint32 length;
+    uint16 version;
+    uint32 header_length;
+    uint8 min_instruction_length;
+    uint8 default_is_stmt;
+    int8 line_base;
+    uint8 line_range;
+    uint8 opcode_base;
+    uint8 std_opcode_lengths[12];
+} debug_header;
+
 #define ELF_MAGIC 0x464C457FU  // "\x7FELF" in little endian
 #define ELF_PROG_LOAD 1
 
