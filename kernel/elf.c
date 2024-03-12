@@ -202,8 +202,8 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
         }
 endop:;
     }
-    // for (int i = 0; i < p->line_ind; i++)
-    //     sprint("%p %d %d\n", p->line[i].addr, p->line[i].line, p->line[i].file);
+    for (int i = 0; i < p->line_ind; i++)
+        sprint("%p %d %d\n", p->line[i].addr, p->line[i].line, p->line[i].file);
 }
 
 //
@@ -265,7 +265,10 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // elf_info is defined above, used to tie the elf file and its corresponding process.
   elf_info info;
 
+  sprint("%s\n",filename);
+
   info.f = vfs_open(filename, O_RDONLY);
+  // sprint("&&&&&&&&&&&&&&&&&&&&&&&&\n");
   info.p = p;
   // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
   if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
@@ -353,7 +356,7 @@ elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
       strtab_sh=temp_sh;
       found_strtab=1;
     }
-    else if(!strcmp(temp_sh.sh_name+shstr,".debugline")){
+    else if(!strcmp(temp_sh.sh_name+shstr,".debug_line")){
       void *debug_line=alloc_pages(ROUNDUP(temp_sh.sh_size,PGSIZE)/PGSIZE);
       if(elf_fpread(ctx, debug_line, temp_sh.sh_size, temp_sh.sh_offset) != temp_sh.sh_size) return EL_EIO;
       make_addr_line(ctx, debug_line, temp_sh.sh_size);
