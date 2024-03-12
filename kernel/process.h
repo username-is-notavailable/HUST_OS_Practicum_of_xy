@@ -121,7 +121,9 @@ typedef struct process_t {
   char *symbols_names;
 
   // added @lab1_challenge2
-  char *debugline; char **dir; code_file *file; addr_line *line; int line_ind;
+  char *debugline; 
+  
+  char **dir; code_file *file; addr_line *line; int line_ind;
 }process;
 
 // switch to run user app

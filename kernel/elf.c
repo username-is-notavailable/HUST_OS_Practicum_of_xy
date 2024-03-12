@@ -10,6 +10,7 @@
 #include "pmm.h"
 #include "vfs.h"
 #include "spike_interface/spike_utils.h"
+#include "util/functions.h"
 
 typedef struct elf_info_t {
   struct file *f;
@@ -205,9 +206,6 @@ endop:;
     //     sprint("%p %d %d\n", p->line[i].addr, p->line[i].line, p->line[i].file);
 }
 
-char debug_line[10240];
-
-
 //
 // load the elf segments to memory regions.
 //
@@ -279,7 +277,7 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
 
-  if (elf_load_names_of_symbols(&elfloader,p) != EL_OK)panic("Fail on loading symbols.\n");
+  if (elf_load_names_of_symbols_and_debugline(&elfloader,p) != EL_OK)panic("Fail on loading symbols.\n");
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
@@ -310,7 +308,7 @@ void load_bincode_from_host_elf_with_para(process *p, char *filename, char *para
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
 
-  if (elf_load_names_of_symbols(&elfloader,p) != EL_OK)panic("Fail on loading symbols.\n");
+  if (elf_load_names_of_symbols_and_debugline(&elfloader,p) != EL_OK)panic("Fail on loading symbols.\n");
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
@@ -332,7 +330,7 @@ void load_bincode_from_host_elf_with_para(process *p, char *filename, char *para
 // 
 // load the name of symbols from elf
 //
-elf_status elf_load_names_of_symbols(elf_ctx *ctx,process *p) {
+elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
   uint64 shoff = ctx->ehdr.shoff;
   uint16 shnum = ctx->ehdr.shnum;
   bool found_symbol=FALSE,found_strtab=FALSE;
@@ -354,6 +352,11 @@ elf_status elf_load_names_of_symbols(elf_ctx *ctx,process *p) {
     else if(temp_sh.sh_type==SHT_STRTAB&&!strcmp(temp_sh.sh_name+shstr,".strtab")){
       strtab_sh=temp_sh;
       found_strtab=1;
+    }
+    else if(!strcmp(temp_sh.sh_name+shstr,".debugline")){
+      void *debug_line=alloc_pages(ROUNDUP(temp_sh.sh_size,PGSIZE)/PGSIZE);
+      if(elf_fpread(ctx, debug_line, temp_sh.sh_size, temp_sh.sh_offset) != temp_sh.sh_size) return EL_EIO;
+      make_addr_line(ctx, debug_line, temp_sh.sh_size);
     }
     if (found_strtab&&found_symbol)break;
   }

@@ -16,20 +16,55 @@ static uint64 free_mem_start_addr;  //beginning address of free memory
 static uint64 free_mem_end_addr;    //end address of free memory (not included)
 
 typedef struct node {
+  uint64 pages;
   struct node *next;
 } list_node;
 
 // g_free_mem_list is the head of the list of free physical memory pages
 static list_node g_free_mem_list;
 
+static pmm_manager *pmm_hash_table;
+
+static pmm_manager free_manager_list;
+
 //
 // actually creates the freepage list. each page occupies 4KB (PGSIZE), i.e., small page.
 // PGSIZE is defined in kernel/riscv.h, ROUNDUP is defined in util/functions.h.
 //
 static void create_freepage_list(uint64 start, uint64 end) {
-  g_free_mem_list.next = 0;
-  for (uint64 p = ROUNDUP(start, PGSIZE); p + PGSIZE < end; p += PGSIZE)
-    free_page( (void *)p );
+  
+  uint64 free_page_start=ROUNDUP(start, PGSIZE), free_page_end=ROUNDDOWN(end,PGSIZE);
+
+  pmm_hash_table=(pmm_manager*)free_page_start;
+  memset((void*)pmm_hash_table,0,HASH_TABLE_PAGES*PGSIZE);
+  free_page_start+=(HASH_TABLE_PAGES*PGSIZE);
+
+  free_manager_list.next=NULL;
+  add_free_managers((void*)free_page_start);
+  free_page_start+=PGSIZE;
+
+  g_free_mem_list.next = (list_node*)free_page_start;
+  g_free_mem_list.next->pages=(free_page_end-free_page_start)/PGSIZE;
+
+
+  // for (uint64 p = ROUNDUP(start, PGSIZE); p + PGSIZE < end; p += PGSIZE)
+  //   free_page( (void *)p );
+}
+
+static void *__alloc_p(uint64 pages){
+  list_node *pre, *p;
+  for(pre=&g_free_mem_list,p=pre->next;p;pre=p,p=p->next)
+    if(p->pages>=pages)break;
+  if(!p)return NULL;
+  if(p->pages>pages){
+    list_node *temp=(list_node*)((uint64)p+PGSIZE*pages);
+    temp->next=p->next;
+    temp->pages=p->pages-pages;
+    pre->next=temp;
+    return (void*)p;
+  }
+  pre->next=p->next;
+  return (void*)p;
 }
 
 //
@@ -40,9 +75,33 @@ void free_page(void *pa) {
     panic("free_page 0x%lx \n", pa);
 
   // insert a physical page to g_free_mem_list
-  list_node *n = (list_node *)pa;
-  n->next = g_free_mem_list.next;
-  g_free_mem_list.next = n;
+  // list_node *n = (list_node *)pa;
+  // n->next = g_free_mem_list.next;
+  // g_free_mem_list.next = n;
+
+  pmm_manager *p=pmm_hash_get(pa);
+  if(!p)panic("free_page 0x%lx \n", pa);
+
+  list_node *new_node=(list_node*)(p->pa), *npre=&g_free_mem_list, *np=npre->next;
+  new_node->pages=p->pages;
+
+  while(np&&(void*)np<pa){
+    npre=np;
+    np=np->next;
+  }
+
+  new_node->next=np;
+  npre->next=new_node;
+
+  if((uint64)new_node+new_node->pages*PGSIZE==(uint64)np){
+    new_node->next=np->next;
+    new_node->pages+=np->pages;
+  }
+  if((uint64)npre+npre->pages*PGSIZE==(uint64)new_node){
+    npre->next=new_node->next;
+    npre->pages+=new_node->pages;
+  }
+
 }
 
 //
@@ -50,10 +109,17 @@ void free_page(void *pa) {
 // Allocates only ONE page!
 //
 void *alloc_page(void) {
-  list_node *n = g_free_mem_list.next;
-  if (n) g_free_mem_list.next = n->next;
+  return alloc_pages(1);
+}
 
-  return (void *)n;
+void *alloc_pages(uint64 pages) {
+  void *p=__alloc_p(pages);
+
+  if(!p)return NULL;
+
+  pmm_hash_put(p,pages);
+
+  return (void *)p;
 }
 
 //
@@ -85,4 +151,53 @@ void pmm_init() {
   sprint("kernel memory manager is initializing ...\n");
   // create the list of free pages
   create_freepage_list(free_mem_start_addr, free_mem_end_addr);
+}
+
+uint64 pmm_hash(void*pa){
+  return (((uint64)pa)<<PGSHIFT)%(HASH_TABLE_PAGES*PGSIZE/sizeof(pmm_manager));
+}
+
+void pmm_hash_put(void*pa,uint64 pages){
+  if(!free_manager_list.next){
+    add_free_managers(__alloc_p(1));
+  }
+  pmm_manager *p=free_manager_list.next;
+  free_manager_list.next=p->next;
+  p->pa=pa;
+  p->pages=pages;
+
+  uint64 hash_index=pmm_hash(pa);
+  p->next=pmm_hash_table[hash_index].next;
+  pmm_hash_table[hash_index].next=p;
+
+}
+
+void add_free_managers(void *pa){
+  if(free_manager_list.next)panic("Needn't add free managers!\n");
+  pmm_manager *p=(pmm_manager*)ROUNDDOWN((uint64)pa,PGSIZE);
+  for(int i=0;i<PGSIZE/sizeof(pmm_manager);i++,p++){
+    p->next=free_manager_list.next;
+    free_manager_list.next=p;
+  }
+}
+
+pmm_manager *pmm_hash_get(void*pa){
+  pmm_manager *p;
+  for(p=pmm_hash_table[pmm_hash(pa)].next;p;p=p->next)
+    if(p->pa==pa)break;
+  return p;
+}
+
+pmm_manager *pmm_hash_erase(pmm_manager* p){
+  if(!p)return NULL;
+
+  pmm_manager *pre = pmm_hash_table + pmm_hash(p->pa);
+  while(pre&&pre->next!=p)pre=pre->next;
+
+  pre->next=p->next;
+
+  p->next=free_manager_list.next;
+  free_manager_list.next=p;
+
+  return p;
 }

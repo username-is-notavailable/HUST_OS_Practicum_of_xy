@@ -53,17 +53,19 @@ struct device *init_rfs_device(const char *dev_name) {
   }
 
   // alloc blocks for the RAM Disk
-  void *curr_addr = NULL;
-  void *last_addr = NULL;
-  void *ramdisk_addr = NULL;
-  for ( int i = 0; i < RAMDISK_BLOCK_COUNT; ++ i ){
-    last_addr = curr_addr;
-    curr_addr = alloc_page();
-    if ( last_addr != NULL && last_addr - curr_addr != PGSIZE ){
-      panic("RAM Disk0: address is discontinuous!\n");
-    }
-  }
-  ramdisk_addr = curr_addr;
+  // void *curr_addr = NULL;
+  // void *last_addr = NULL;
+  // void *ramdisk_addr = NULL;
+  // for ( int i = 0; i < RAMDISK_BLOCK_COUNT; ++ i ){
+  //   last_addr = curr_addr;
+  //   curr_addr = alloc_page();
+  //   if ( last_addr != NULL && last_addr - curr_addr != PGSIZE ){
+  //     panic("RAM Disk0: address is discontinuous!\n");
+  //   }
+  // }
+  // ramdisk_addr = curr_addr;
+
+  void *ramdisk_addr = alloc_pages(RAMDISK_BLOCK_COUNT);
 
   // find a free rfs device
   struct rfs_device **rfs_device = NULL;
