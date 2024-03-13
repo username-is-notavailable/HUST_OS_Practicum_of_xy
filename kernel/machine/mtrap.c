@@ -4,20 +4,21 @@
 #include "util/string.h"
 
 static void debug_line(uint64 mepc) {
-  addr_line *line = current->line;
+  uint64 tp=read_tp();
+  addr_line *line = current[tp]->line;
   int i;
   // sprint("%x\n", mepc);
-  for(i=0;i<current->line_ind;i++){
+  for(i=0;i<current[tp]->line_ind;i++){
     // sprint("%x\n", (line+i)->addr);
     if((line+i)->addr==mepc)break;
   }
-  if(i>=current->line_ind)panic("unknow error! mepc:%lx", mepc);
+  if(i>=current[tp]->line_ind)panic("unknow error! mepc:%lx", mepc);
   // sprint("line: %d\n", (line+i)->line);
   // sprint("file: %s\n", (current->file+(line+i)->file)->file);
   // sprint("dir: %s\n", *(current->dir+((current->file+(line+i)->file)->dir)));
   uint64 line_num = (line+i)->line; 
-  char *file = (current->file+(line+i)->file)->file;
-  char *dir = *(current->dir+((current->file+(line+i)->file)->dir));
+  char *file = (current[tp]->file+(line+i)->file)->file;
+  char *dir = *(current[tp]->dir+((current[tp]->file+(line+i)->file)->dir));
   char path[1024];
   uint64 dir_len = strlen(dir);
   uint64 file_len = strlen(file);

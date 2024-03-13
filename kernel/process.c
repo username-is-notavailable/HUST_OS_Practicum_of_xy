@@ -363,6 +363,8 @@ void reallocate_process(process* p){
 
 int do_exec(char *command, char *para){
 
+  uint64 tp=read_tp();
+
   char command_buf[256],para_buf[256];
 
   strcpy(command_buf,command);
@@ -370,20 +372,20 @@ int do_exec(char *command, char *para){
 
   // sprint("\ncommand:%s para: %s\n\n",command,para);
 
-  reallocate_process(current);
+  reallocate_process(current[tp]);
   // sprint("Where is the error?\n");
   // sprint("\ncommand:%s para: %s\n\n",command_buf,para_buf);
 
 
-  load_bincode_from_host_elf_with_para(current, command_buf, para_buf);
+  load_bincode_from_host_elf_with_para(current[tp], command_buf, para_buf);
 
   return 0;
 }
 
 uint64 do_wait(uint64 pid){
-  if(procs[pid].status==FREE||procs[pid].parent!=current)return -1;
-  if(procs[pid].status==ZOMBIE)return 0;
   uint64 tp = read_tp();
+  if(procs[pid].status==FREE||procs[pid].parent!=current[tp])return -1;
+  if(procs[pid].status==ZOMBIE)return 0;
   current[tp]->waiting_for_child=pid;
   current[tp]->status=BLOCKED;
   schedule();

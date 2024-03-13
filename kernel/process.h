@@ -143,6 +143,6 @@ int do_exec(char *command, char *para);
 uint64 do_wait(uint64 pid);
 
 // current running process
-extern process* current;
+extern process* current[NCPU];
 
 #endif

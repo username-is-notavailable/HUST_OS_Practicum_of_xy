@@ -6,7 +6,7 @@
 #include "kernel/riscv.h"
 #include "kernel/config.h"
 #include "spike_interface/spike_utils.h"
-#include "sync_utils.h"
+#include "kernel/sync_utils.h"
 
 //
 // global variables are placed in the .data section.

@@ -79,12 +79,14 @@ void schedule() {
     }
   }
 
-  current = ready_queue_head;
-  assert( current->status == READY );
+  uint64 tp=read_tp();
+
+  current[tp] = ready_queue_head;
+  assert( current[tp]->status == READY );
   ready_queue_head = ready_queue_head->queue_next;
   spinlock_unlock(&ready_queue_head_lock);
 
-  current->status = RUNNING;
-  sprint( "going to schedule process %d to run.\n", current->pid );
-  switch_to( current );
+  current[tp]->status = RUNNING;
+  sprint( "going to schedule process %d to run.\n", current[tp]->pid );
+  switch_to( current[tp] );
 }
