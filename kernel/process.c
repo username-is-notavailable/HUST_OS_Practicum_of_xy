@@ -18,6 +18,7 @@
 #include "sched.h"
 #include "util/functions.h"
 #include "spike_interface/spike_utils.h"
+#include "spike_interface/atomic.h"
 
 //Two functions defined in kernel/usertrap.S
 extern char smode_trap_vector[];
@@ -30,15 +31,18 @@ extern char trap_sec_start[];
 // process pool. added @lab3_1
 process procs[NPROC];
 
+spinlock_t procs_lock=SPINLOCK_INIT;
+
 // current points to the currently running user-mode application.
-process* current = NULL;
+process* current[NCPU];
 
 //
 // switch to a user-mode process
 //
 void switch_to(process* proc) {
+  uint64 tp=read_tp();
   assert(proc);
-  current = proc;
+  current[tp] = proc;
 
   // write the smode_trap_vector (64-bit func. address) defined in kernel/strap_vector.S
   // to the stvec privilege register, such that trap handler pointed by smode_trap_vector
@@ -91,8 +95,10 @@ process* alloc_process() {
   // locate the first usable process structure
   int i;
 
+  spinlock_lock(&procs_lock);
   for( i=0; i<NPROC; i++ )
     if( procs[i].status == FREE ) break;
+  spinlock_unlock(&procs_lock);
 
   if( i>=NPROC ){
     panic( "cannot find any free process structure.\n" );
@@ -158,6 +164,7 @@ process* alloc_process() {
 
   // return after initialization.
   procs[i].waiting_for_child=-1;
+  procs[i].trapframe->regs.tp=read_tp();
   return &procs[i];
 }
 
@@ -185,6 +192,8 @@ int free_process( process* proc ) {
 //
 int do_fork( process* parent)
 {
+
+  uint64 tp = read_tp();
   sprint( "will fork a child from parent %d.\n", parent->pid );
   process* child = alloc_process();
   // sprint("*************************************************\n");
@@ -214,8 +223,8 @@ int do_fork( process* parent)
         }
 
         // copy and map the heap blocks
-        for (uint64 heap_block = current->user_heap.heap_bottom;
-             heap_block < current->user_heap.heap_top; heap_block += PGSIZE) {
+        for (uint64 heap_block = current[tp]->user_heap.heap_bottom;
+             heap_block < current[tp]->user_heap.heap_top; heap_block += PGSIZE) {
           if (free_block_filter[(heap_block - heap_bottom) / PGSIZE])  // skip free blocks
             continue;
 
@@ -264,25 +273,27 @@ int do_fork( process* parent)
 
 void reallocate_process(process* p){
 
+  uint64 tp = read_tp();
+
   for(uint64 i=ROUNDDOWN(p->trapframe->regs.sp,PGSIZE);
     i<USER_STACK_TOP;i+=PGSIZE)
     user_vm_unmap(p->pagetable,i,PGSIZE,TRUE);
   
   int free_block_filter[MAX_HEAP_PAGES];
   memset(free_block_filter, 0, MAX_HEAP_PAGES);
-  uint64 heap_bottom = current->user_heap.heap_bottom;
-  for (int i = 0; i < current->user_heap.free_pages_count; i++) {
-    int index = (current->user_heap.free_pages_address[i] - heap_bottom) / PGSIZE;
+  uint64 heap_bottom = current[tp]->user_heap.heap_bottom;
+  for (int i = 0; i < current[tp]->user_heap.free_pages_count; i++) {
+    int index = (current[tp]->user_heap.free_pages_address[i] - heap_bottom) / PGSIZE;
     free_block_filter[index] = 1;
   }
 
   // clean and map the heap blocks
-  for (uint64 heap_block = current->user_heap.heap_bottom;
-        heap_block < current->user_heap.heap_top; heap_block += PGSIZE) {
+  for (uint64 heap_block = current[tp]->user_heap.heap_bottom;
+        heap_block < current[tp]->user_heap.heap_top; heap_block += PGSIZE) {
     if (free_block_filter[(heap_block - heap_bottom) / PGSIZE])  // skip free blocks
       continue;
 
-    user_vm_unmap(current->pagetable,heap_block,PGSIZE,TRUE);
+    user_vm_unmap(current[tp]->pagetable,heap_block,PGSIZE,TRUE);
   }
 
   user_vm_unmap(p->pagetable,(uint64)(p->trapframe),PGSIZE,TRUE);
@@ -370,9 +381,11 @@ int do_exec(char *command, char *para){
 }
 
 uint64 do_wait(uint64 pid){
-  if(procs[pid].status==FREE||procs[pid].status==ZOMBIE||procs[pid].parent!=current)return -1;
-  current->waiting_for_child=pid;
-  current->status=BLOCKED;
+  if(procs[pid].status==FREE||procs[pid].parent!=current)return -1;
+  if(procs[pid].status==ZOMBIE)return 0;
+  uint64 tp = read_tp();
+  current[tp]->waiting_for_child=pid;
+  current[tp]->status=BLOCKED;
   schedule();
   return 0;
 }

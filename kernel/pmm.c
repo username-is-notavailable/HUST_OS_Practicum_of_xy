@@ -5,6 +5,7 @@
 #include "util/string.h"
 #include "memlayout.h"
 #include "spike_interface/spike_utils.h"
+#include "spike_interface/atomic.h"
 
 // _end is defined in kernel/kernel.lds, it marks the ending (virtual) address of PKE kernel
 extern char _end[];
@@ -23,9 +24,15 @@ typedef struct node {
 // g_free_mem_list is the head of the list of free physical memory pages
 static list_node g_free_mem_list;
 
+static spinlock_t g_free_mem_list_lock;
+
 static pmm_manager *pmm_hash_table;
 
 static pmm_manager free_manager_list;
+
+static spinlock_t manager_lock;
+
+int vm_alloc_stage[NCPU]={0};
 
 //
 // actually creates the freepage list. each page occupies 4KB (PGSIZE), i.e., small page.
@@ -52,18 +59,24 @@ static void create_freepage_list(uint64 start, uint64 end) {
 }
 
 static void *__alloc_p(uint64 pages){
+  spinlock_lock(&g_free_mem_list_lock);
   list_node *pre, *p;
   for(pre=&g_free_mem_list,p=pre->next;p;pre=p,p=p->next)
     if(p->pages>=pages)break;
-  if(!p)return NULL;
+  if(!p){
+    spinlock_unlock(&g_free_mem_list_lock);
+    return NULL;  
+  }
   if(p->pages>pages){
     list_node *temp=(list_node*)((uint64)p+PGSIZE*pages);
     temp->next=p->next;
     temp->pages=p->pages-pages;
     pre->next=temp;
+    spinlock_unlock(&g_free_mem_list_lock);
     return (void*)p;
   }
   pre->next=p->next;
+  spinlock_unlock(&g_free_mem_list_lock);
   return (void*)p;
 }
 
@@ -81,6 +94,8 @@ void free_page(void *pa) {
 
   pmm_manager *p=pmm_hash_get(pa);
   if(!p)panic("free_page 0x%lx \n", pa);
+
+  spinlock_lock(&g_free_mem_list_lock);
 
   list_node *new_node=(list_node*)(p->pa), *npre=&g_free_mem_list, *np=npre->next;
   new_node->pages=p->pages;
@@ -101,6 +116,8 @@ void free_page(void *pa) {
     npre->next=new_node->next;
     npre->pages+=new_node->pages;
   }
+
+  spinlock_unlock(&g_free_mem_list_lock);
 
 }
 
@@ -158,6 +175,7 @@ uint64 pmm_hash(void*pa){
 }
 
 void pmm_hash_put(void*pa,uint64 pages){
+  spinlock_lock(&manager_lock);
   if(!free_manager_list.next){
     add_free_managers(__alloc_p(1));
   }
@@ -170,6 +188,7 @@ void pmm_hash_put(void*pa,uint64 pages){
   p->next=pmm_hash_table[hash_index].next;
   pmm_hash_table[hash_index].next=p;
 
+  spinlock_unlock(&manager_lock);
 }
 
 void add_free_managers(void *pa){
@@ -183,13 +202,17 @@ void add_free_managers(void *pa){
 
 pmm_manager *pmm_hash_get(void*pa){
   pmm_manager *p;
+  spinlock_lock(&manager_lock);
   for(p=pmm_hash_table[pmm_hash(pa)].next;p;p=p->next)
     if(p->pa==pa)break;
+  spinlock_unlock(&manager_lock);
   return p;
 }
 
 pmm_manager *pmm_hash_erase(pmm_manager* p){
   if(!p)return NULL;
+
+  spinlock_lock(&manager_lock);
 
   pmm_manager *pre = pmm_hash_table + pmm_hash(p->pa);
   while(pre&&pre->next!=p)pre=pre->next;
@@ -198,6 +221,8 @@ pmm_manager *pmm_hash_erase(pmm_manager* p){
 
   p->next=free_manager_list.next;
   free_manager_list.next=p;
+
+  spinlock_unlock(&manager_lock);
 
   return p;
 }

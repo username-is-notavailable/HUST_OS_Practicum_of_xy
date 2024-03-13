@@ -4,19 +4,26 @@
 
 #include "sched.h"
 #include "spike_interface/spike_utils.h"
+#include "spike_interface/atomic.h"
 
 process* ready_queue_head = NULL;
+
+static spinlock_t ready_queue_head_lock=SPINLOCK_INIT;
 
 //
 // insert a process, proc, into the END of ready queue.
 //
 void insert_to_ready_queue( process* proc ) {
+
+  spinlock_lock(&ready_queue_head_lock);
+
   sprint( "going to insert process %d to ready queue.\n", proc->pid );
   // if the queue is empty in the beginning
   if( ready_queue_head == NULL ){
     proc->status = READY;
     proc->queue_next = NULL;
     ready_queue_head = proc;
+    spinlock_unlock(&ready_queue_head_lock);
     return;
   }
 
@@ -24,13 +31,21 @@ void insert_to_ready_queue( process* proc ) {
   process *p;
   // browse the ready queue to see if proc is already in-queue
   for( p=ready_queue_head; p->queue_next!=NULL; p=p->queue_next )
-    if( p == proc ) return;  //already in queue
+    if( p == proc ) {
+      spinlock_unlock(&ready_queue_head_lock);
+      return;  //already in queue
+    }
 
   // p points to the last element of the ready queue
-  if( p==proc ) return;
+  if( p==proc ) {
+    spinlock_unlock(&ready_queue_head_lock);
+    return;
+  }
   p->queue_next = proc;
   proc->status = READY;
   proc->queue_next = NULL;
+
+  spinlock_unlock(&ready_queue_head_lock);
 
   return;
 }
@@ -43,6 +58,7 @@ void insert_to_ready_queue( process* proc ) {
 //
 extern process procs[NPROC];
 void schedule() {
+  spinlock_lock(&ready_queue_head_lock);
   if ( !ready_queue_head ){
     // by default, if there are no ready process, and all processes are in the status of
     // FREE and ZOMBIE, we should shutdown the emulated RISC-V machine.
@@ -66,6 +82,7 @@ void schedule() {
   current = ready_queue_head;
   assert( current->status == READY );
   ready_queue_head = ready_queue_head->queue_next;
+  spinlock_unlock(&ready_queue_head_lock);
 
   current->status = RUNNING;
   sprint( "going to schedule process %d to run.\n", current->pid );

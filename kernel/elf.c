@@ -265,7 +265,7 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // elf_info is defined above, used to tie the elf file and its corresponding process.
   elf_info info;
 
-  sprint("%s\n",filename);
+  // sprint("%s\n",filename);
 
   info.f = vfs_open(filename, O_RDONLY);
   // sprint("&&&&&&&&&&&&&&&&&&&&&&&&\n");

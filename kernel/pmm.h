@@ -2,8 +2,11 @@
 #define _PMM_H_
 
 #include "util/types.h"
+#include "config.h"
 
 #define HASH_TABLE_PAGES 4
+
+extern int vm_alloc_stage[NCPU];
 
 typedef struct pmm_manager_t
 {

@@ -15,12 +15,15 @@
 #include "vfs.h"
 #include "rfs.h"
 #include "ramdev.h"
+#include "sync_utils.h"
 
 //
 // trap_sec_start points to the beginning of S-mode trap segment (i.e., the entry point of
 // S-mode trap vector). added @lab2_1
 //
 extern char trap_sec_start[];
+
+static int s_start_barrier=0;
 
 //
 // turn on paging. added @lab2_1
@@ -75,7 +78,7 @@ process* load_user_program() {
   size_t argc = parse_args(&arg_bug_msg);
   if (!argc) panic("You need to specify the application program!\n");
 
-  load_bincode_from_host_elf(proc, arg_bug_msg.argv[0]);
+  load_bincode_from_host_elf(proc, arg_bug_msg.argv[read_tp()]);
   return proc;
 }
 
@@ -83,17 +86,27 @@ process* load_user_program() {
 // s_start: S-mode entry point of riscv-pke OS kernel.
 //
 int s_start(void) {
-  sprint("Enter supervisor mode...\n");
+  uint64 tp=read_tp();
+
+  sprint("hartid = %d: Enter supervisor mode...\n",tp);
+  // sprint("Enter supervisor mode...\n");
   // in the beginning, we use Bare mode (direct) memory mapping as in lab1.
   // but now, we are going to switch to the paging mode @lab2_1.
   // note, the code still works in Bare mode when calling pmm_init() and kern_vm_init().
   write_csr(satp, 0);
 
-  // init phisical memory manager
-  pmm_init();
+  if(tp==0){
+    // init phisical memory manager
+    pmm_init();
 
-  // build the kernel page table
-  kern_vm_init();
+    // build the kernel page table
+    kern_vm_init();
+
+    // init file system, added @lab4_1
+    fs_init();
+  }
+
+  sync_barrier(&s_start_barrier,NCPU);
 
   // now, switch to paging mode by turning on paging (SV39)
   enable_paging();
@@ -103,8 +116,7 @@ int s_start(void) {
   // added @lab3_1
   init_proc_pool();
 
-  // init file system, added @lab4_1
-  fs_init();
+  vm_alloc_stage[tp]=1;
 
   sprint("Switch to user mode...\n");
   // the application code (elf) is first loaded into memory, and then put into execution
