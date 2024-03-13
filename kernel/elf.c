@@ -202,8 +202,8 @@ void make_addr_line(elf_ctx *ctx, char *debug_line, uint64 length) {
         }
 endop:;
     }
-    for (int i = 0; i < p->line_ind; i++)
-        sprint("%p %d %d\n", p->line[i].addr, p->line[i].line, p->line[i].file);
+    // for (int i = 0; i < p->line_ind; i++)
+    //     sprint("%p %d %d\n", p->line[i].addr, p->line[i].line, p->line[i].file);
 }
 
 //
@@ -357,14 +357,14 @@ elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
       found_strtab=1;
     }
     else if(!strcmp(temp_sh.sh_name+shstr,".debug_line")){
-      void *debug_line=alloc_pages(ROUNDUP(temp_sh.sh_size,PGSIZE)/PGSIZE);
+      void *debug_line=alloc_pages(ROUNDUP(temp_sh.sh_size*3,PGSIZE)/PGSIZE);
       if(elf_fpread(ctx, debug_line, temp_sh.sh_size, temp_sh.sh_offset) != temp_sh.sh_size) return EL_EIO;
       make_addr_line(ctx, debug_line, temp_sh.sh_size);
     }
     if (found_strtab&&found_symbol)break;
   }
   void* symbolstr = alloc_page();
-  sprint("%lld\n",strtab_sh.sh_size);
+  // sprint("%lld\n",strtab_sh.sh_size);
   if(elf_fpread(ctx, symbolstr, strtab_sh.sh_size, strtab_sh.sh_offset) != strtab_sh.sh_size) panic("Error in elf_load_names_of_symbols when read symbols.\n");
   p->symbol_num=symbol_sh.sh_size/sizeof(symbol_table);
   // sprint("%lf\n",p->symbol_num);
