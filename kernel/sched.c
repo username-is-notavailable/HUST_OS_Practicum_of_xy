@@ -5,50 +5,42 @@
 #include "sched.h"
 #include "spike_interface/spike_utils.h"
 #include "spike_interface/atomic.h"
+#include "sync_utils.h"
 
-process* ready_queue_head = NULL;
-
-static spinlock_t ready_queue_head_lock=SPINLOCK_INIT;
+process* ready_queue_head[NCPU] = {NULL};
 
 //
 // insert a process, proc, into the END of ready queue.
 //
 void insert_to_ready_queue( process* proc ) {
 
-  spinlock_lock(&ready_queue_head_lock);
+  uint64 tp=read_tp();
 
   sprint( "going to insert process %d to ready queue.\n", proc->pid );
   // if the queue is empty in the beginning
-  if( ready_queue_head == NULL ){
+  if( ready_queue_head[tp] == NULL ){
     proc->status = READY;
     proc->queue_next = NULL;
-    ready_queue_head = proc;
-    spinlock_unlock(&ready_queue_head_lock);
+    ready_queue_head[tp] = proc;
     return;
   }
 
   // ready queue is not empty
   process *p;
   // browse the ready queue to see if proc is already in-queue
-  for( p=ready_queue_head; p->queue_next!=NULL; p=p->queue_next )
-    if( p == proc ) {
-      spinlock_unlock(&ready_queue_head_lock);
-      return;  //already in queue
-    }
+  for( p=ready_queue_head[tp]; p->queue_next!=NULL; p=p->queue_next )
+    if( p == proc ) return;  //already in queue
 
   // p points to the last element of the ready queue
-  if( p==proc ) {
-    spinlock_unlock(&ready_queue_head_lock);
-    return;
-  }
+  if( p==proc ) return;
   p->queue_next = proc;
   proc->status = READY;
   proc->queue_next = NULL;
 
-  spinlock_unlock(&ready_queue_head_lock);
-
   return;
 }
+
+int shutdown_barrier=0;
 
 //
 // choose a proc from the ready queue, and put it to run.
@@ -58,11 +50,13 @@ void insert_to_ready_queue( process* proc ) {
 //
 extern process procs[NPROC];
 void schedule() {
-  spinlock_lock(&ready_queue_head_lock);
-  if ( !ready_queue_head ){
+  uint64 tp=read_tp();
+  if ( !ready_queue_head[tp] ){
     // by default, if there are no ready process, and all processes are in the status of
     // FREE and ZOMBIE, we should shutdown the emulated RISC-V machine.
     int should_shutdown = 1;
+
+    sync_barrier(&shutdown_barrier,NCPU);
 
     for( int i=0; i<NPROC; i++ )
       if( (procs[i].status != FREE) && (procs[i].status != ZOMBIE) ){
@@ -72,19 +66,19 @@ void schedule() {
       }
 
     if( should_shutdown ){
-      sprint( "no more ready processes, system shutdown now.\n" );
-      shutdown( 0 );
+      if(tp==0){
+        sprint( "no more ready processes, system shutdown now.\n" );
+        shutdown( 0 );
+      }
+      return;
     }else{
       panic( "Not handled: we should let system wait for unfinished processes.\n" );
     }
   }
 
-  uint64 tp=read_tp();
-
-  current[tp] = ready_queue_head;
+  current[tp] = ready_queue_head[tp];
   assert( current[tp]->status == READY );
-  ready_queue_head = ready_queue_head->queue_next;
-  spinlock_unlock(&ready_queue_head_lock);
+  ready_queue_head[tp] = ready_queue_head[tp]->queue_next;
 
   current[tp]->status = RUNNING;
   sprint( "going to schedule process %d to run.\n", current[tp]->pid );
