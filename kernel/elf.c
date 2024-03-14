@@ -347,7 +347,7 @@ elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
   //sprint("%s\n",shstr);
   for(uint16 i=0;i<shnum;i++){
     if(elf_fpread(ctx, &temp_sh, sizeof(elf_section_header), shoff + i*sizeof(elf_section_header))!=sizeof(elf_section_header)) panic("Error in elf_load_names_of_symbols when read shstr.\n");;
-    //sprint("%s\n",temp_sh.sh_name+shstr);
+    // sprint("%s\n",temp_sh.sh_name+shstr);
     if(temp_sh.sh_type==SHT_SYMTAB){
       symbol_sh=temp_sh;
       found_symbol=1;
@@ -372,6 +372,9 @@ elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
     if(elf_fpread(ctx, &temp_sym, sizeof(symbol_table), symbol_sh.sh_offset + i *sizeof(symbol_table)) != sizeof(symbol_table)) panic("Error in elf_load_names_of_symbols when read temp_sym.\n");
     // strcpy(p->symbols[i].name,symbolstr + temp_sym.st_name);
     // sprint("%d: %s\n",i,temp_sym.st_name+symbolstr);
+    // if(!strcmp(temp_sym.st_name+symbolstr,"free_mem_list")){
+    //   sprint("%d\n",temp_sym.st_value);
+    // }
     p->symbols[i].name=temp_sym.st_name;
     p->symbols[i].value=temp_sym.st_value;
     p->symbols[i].end=temp_sym.st_value+temp_sym.st_size;

@@ -6,6 +6,15 @@
 #define _USER_LIB_H_
 #include "util/types.h"
 #include "kernel/proc_file.h"
+// #include "util/string.h"
+
+typedef struct mem_node_t
+{
+    uint64 size;
+    void *neighbor;
+    void *next;
+}mem_node;
+
 
 int printu(const char *s, ...);
 int exit(int code);
@@ -37,5 +46,8 @@ int unlink_u(const char *fn);
 int exec(char *command, char *para);
 int wait(int pid);
 int print_backtrace(int depth);
+
+void* better_malloc(uint64 size);
+void better_free(void* va);
 
 #endif

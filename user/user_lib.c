@@ -9,6 +9,8 @@
 #include "util/types.h"
 #include "util/snprintf.h"
 #include "kernel/syscall.h"
+#include "util/functions.h"
+#include "kernel/memlayout.h"
 
 uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, uint64 a5, uint64 a6,
                  uint64 a7) {
@@ -187,4 +189,65 @@ int wait(int pid) {
 //
 int print_backtrace(int depth) {
   return do_user_call(SYS_user_backtrace, depth, 0, 0, 0, 0, 0, 0);
+}
+
+static mem_node free_mem_list={sizeof(mem_node),0};
+
+void* better_malloc(uint64 size){
+  asm volatile ("" : : "" (free_mem_list));//阻止编译器优化掉全局变量
+  // printu("%d\n",*(uint64*)(0x0000000000011be8));
+  mem_node *pre,*p,*temp;
+  // printu("%p %p %p %p\n",&pre,&p,&temp,&free_mem_list);
+  
+  // uint64 ttt=(uint64)pre;
+  // printu("%p\n",pre);
+  
+  uint64 offset=ROUNDUP(sizeof(mem_node),sizeof(int64));
+  size=ROUNDUP(offset + size, sizeof(int64));
+  for(pre=&free_mem_list,p=pre->next;p;pre=p,p=p->next){
+    if(p->size>=size)break;
+  }
+  // printu("p:%p\n",p);
+  if(!p){
+    p=pre;
+    while (p->size<size){
+      void *new_page=(void*)do_user_call(SYS_user_allocate_page,0,0,0,0,0,0,0);
+      // printu("%p %p\n",p,new_page);
+      if((void*)p+p->size==new_page)p->size+=PGSIZE;
+      else{
+        temp=(mem_node*)new_page;
+        temp->size=PGSIZE;
+        temp->next=NULL;
+        p->next=temp;
+        p=temp;
+      }
+    }
+    pre=&free_mem_list;
+    while (pre->next!=p)pre=pre->next;
+  }
+
+  if(p->size-size>offset){
+    temp=(mem_node*)((void*)p+size);
+    temp->next=p->next;
+    temp->size=p->size-size;
+    p->size=size;
+    p->next=temp;
+  }
+
+  pre->next=p->next;
+
+  return (void*)p+offset;
+}
+
+void better_free(void* va){
+  uint64 offset=ROUNDUP(sizeof(mem_node),sizeof(int64));
+  mem_node *pre=&free_mem_list,*p=pre->next,*temp=(mem_node*)(va-offset);
+  while(p&&(void*)p<va)pre=p,p=p->next;
+  pre->next=temp;
+  temp->next=p;
+
+  if((void*)temp+temp->size==p)temp->next=p->next,temp->size+=p->size;
+
+  if((void*)pre+pre->size==temp)pre->next=temp->next,pre->size+=temp->size;
+  
 }

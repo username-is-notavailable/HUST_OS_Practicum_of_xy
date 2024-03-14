@@ -12,7 +12,10 @@ static void debug_line(uint64 mepc) {
     // sprint("%x\n", (line+i)->addr);
     if((line+i)->addr==mepc)break;
   }
-  if(i>=current[tp]->line_ind)panic("unknow error! mepc:%lx", mepc);
+  if(i>=current[tp]->line_ind){
+    sprint("unknow error! mepc:%lx\n", mepc);
+    return ;
+  }
   // sprint("line: %d\n", (line+i)->line);
   // sprint("file: %s\n", (current->file+(line+i)->file)->file);
   // sprint("dir: %s\n", *(current->dir+((current->file+(line+i)->file)->dir)));
