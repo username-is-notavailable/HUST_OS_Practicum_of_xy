@@ -31,6 +31,7 @@ enum proc_status {
   RUNNING,         // currently running
   BLOCKED,         // waiting for something
   ZOMBIE,          // terminated but not reclaimed yet
+  UNAVAILABLE,     //
 };
 
 // types of a segment

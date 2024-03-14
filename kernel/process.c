@@ -36,6 +36,8 @@ spinlock_t procs_lock=SPINLOCK_INIT;
 // current points to the currently running user-mode application.
 process* current[NCPU];
 
+int huxiaoyang=-1;
+
 //
 // switch to a user-mode process
 //
@@ -92,19 +94,32 @@ void init_proc_pool() {
 // process strcuture. added @lab3_1
 //
 process* alloc_process() {
+  spinlock_lock(&procs_lock);
   // locate the first usable process structure
   int i;
-
-  spinlock_lock(&procs_lock);
-  for( i=0; i<NPROC; i++ )
-    if( procs[i].status == FREE ) break;
-  spinlock_unlock(&procs_lock);
-
+  // sprint("%d\n",read_tp());
+  if(read_tp()==1)for (size_t i = 0; i < 10000; i++);
+  // sprint("");
+  // for (size_t i = 0; i < 10000; i++);
+  for( i=0; i<NPROC; i++ ){
+    if( procs[i].status == FREE ) {
+      // sprint("%d\n",i);
+      // sprint("%d\n",procs[i].status);
+      procs[i].status=UNAVAILABLE;
+      break;
+    }
+  }
   if( i>=NPROC ){
     panic( "cannot find any free process structure.\n" );
+    spinlock_unlock(&procs_lock);
     return 0;
   }
+  
+  sprint("%d %d\n",i,procs[i].status);
 
+  // huxiaoyang=read_tp();
+
+  spinlock_unlock(&procs_lock);
   // init proc[i]'s vm space
   procs[i].trapframe = (trapframe *)alloc_page();  //trapframe, used to save context
   memset(procs[i].trapframe, 0, sizeof(trapframe));

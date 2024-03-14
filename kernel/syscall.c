@@ -14,6 +14,7 @@
 #include "vmm.h"
 #include "sched.h"
 #include "proc_file.h"
+#include "sync_utils.h"
 
 #include "spike_interface/spike_utils.h"
 
@@ -30,6 +31,8 @@ ssize_t sys_user_print(const char* buf, size_t n) {
   return 0;
 }
 
+int exit_barrier=0;
+
 //
 // implement the SYS_user_exit syscall
 //
@@ -37,7 +40,10 @@ ssize_t sys_user_exit(uint64 code) {
   sprint("User exit with code:%d.\n", code);
   // reclaim the current process, and reschedule. added @lab3_1
   free_process( current[read_tp()] );
-  schedule();
+
+  sync_barrier(&exit_barrier,NCPU);
+
+  if(read_tp()==0)schedule();
   return 0;
 }
 
