@@ -104,6 +104,9 @@ int s_start(void) {
 
     // init file system, added @lab4_1
     fs_init();
+
+    // added @lab3_1
+    init_proc_pool();
   }
 
   sync_barrier(&s_start_barrier,NCPU);
@@ -112,9 +115,6 @@ int s_start(void) {
   enable_paging();
   // the code now formally works in paging mode, meaning the page table is now in use.
   sprint("kernel page table is on \n");
-
-  // added @lab3_1
-  init_proc_pool();
 
   vm_alloc_stage[tp]=1;
 
