@@ -23,6 +23,7 @@ int main(int argc, char *argv[]) {
   char buf[MAXBUF];
   char *token;
   char delim[3] = " \n";
+  printu("PPPPPPPPPPPPPPPPPPPPPPPPPPPPP\n");
   fd = open("/shellrc", O_RDONLY);
 
   read_u(fd, buf, MAXBUF);

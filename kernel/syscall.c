@@ -72,7 +72,7 @@ uint64 sys_user_allocate_page() {
 //
 uint64 sys_user_free_page(uint64 va) {
   uint64 tp=read_tp();
-  user_vm_unmap((pagetable_t)current[tp]->pagetable, va, PGSIZE, 1);
+  user_vm_unmap((pagetable_t)current[tp]->pagetable, va, PGSIZE, (*page_walk(current[tp]->pagetable,va,FALSE)&PTE_COW)==0);
   // add the reclaimed page to the free page list
   current[tp]->user_heap.free_pages_address[current[tp]->user_heap.free_pages_count++] = va;
   return 0;
@@ -261,6 +261,13 @@ ssize_t sys_user_print_backtrace(uint64 depth) {
   return depth;
 }
 
+ssize_t sys_user_printpa(uint64 va)
+{
+  uint64 pa = (uint64)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), (void*)va);
+  sprint("%lx\n", pa);
+  return 0;
+}
+
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -315,6 +322,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_wait(a1);
     case SYS_user_backtrace:
       return sys_user_print_backtrace(a0);
+    case SYS_user_printpa:
+      return sys_user_printpa(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

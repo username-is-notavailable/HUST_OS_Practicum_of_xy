@@ -10,6 +10,7 @@
 #include "vmm.h"
 #include "sched.h"
 #include "util/functions.h"
+#include "util/string.h"
 
 #include "spike_interface/spike_utils.h"
 
@@ -61,8 +62,21 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // virtual address that causes the page fault.
       // panic( "You need to implement the operations that actually handle the page fault in lab2_3.\n" );
       uint64 tp=read_tp();
-      if(stval < current[tp]->trapframe->regs.sp - PGSIZE*20)panic("this address is not available!");
-      void *pa = alloc_page();
+      pte_t *pte = page_walk(current[tp]->pagetable, stval, FALSE);
+      void* pa=alloc_page();
+      if(pte&&(*pte)&PTE_COW){
+        uint64 page_pa=lookup_pa(current[tp]->pagetable,stval);
+        // sprint("%x\n",page_pa);
+        if(!page_pa){
+          sprint("Error when COW\n");
+          return ;
+        }
+        memcpy(pa,(void*)page_pa,PGSIZE);
+        // sprint("unmap\n");
+        user_vm_unmap(current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE),PGSIZE,FALSE);
+      }
+      else if(stval < current[tp]->trapframe->regs.sp - PGSIZE*20) panic("this address is not available!");
+      // sprint("!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
       user_vm_map((pagetable_t)current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
       break;

@@ -251,3 +251,8 @@ void better_free(void* va){
   if((void*)pre+pre->size==temp)pre->next=temp->next,pre->size+=temp->size;
   
 }
+
+void printpa(int* va)
+{
+  do_user_call(SYS_user_printpa, (uint64)va, 0, 0, 0, 0, 0, 0);
+}

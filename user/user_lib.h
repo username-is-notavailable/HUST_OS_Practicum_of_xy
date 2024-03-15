@@ -50,4 +50,6 @@ int print_backtrace(int depth);
 void* better_malloc(uint64 size);
 void better_free(void* va);
 
+void printpa(int* va);
+
 #endif
