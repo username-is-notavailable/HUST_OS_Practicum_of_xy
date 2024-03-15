@@ -56,15 +56,13 @@ void schedule() {
     // FREE and ZOMBIE, we should shutdown the emulated RISC-V machine.
     int should_shutdown = 1;
 
-    sync_barrier(&shutdown_barrier,NCPU);
-
     for( int i=0; i<NPROC; i++ )
       if( (procs[i].status != FREE) && (procs[i].status != ZOMBIE) ){
         should_shutdown = 0;
         sprint( "ready queue empty, but process %d is not in free/zombie state:%d\n", 
           i, procs[i].status );
       }
-
+    sync_barrier(&shutdown_barrier,NCPU);
     if( should_shutdown ){
       if(tp==0){
         sprint( "no more ready processes, system shutdown now.\n" );

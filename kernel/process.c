@@ -29,9 +29,7 @@ extern void return_to_user(trapframe *, uint64 satp);
 extern char trap_sec_start[];
 
 // process pool. added @lab3_1
-process procs[NPROC];
-
-spinlock_t procs_lock=SPINLOCK_INIT;
+process procs[NCPU][NPROC];
 
 // current points to the currently running user-mode application.
 process* current[NCPU];
@@ -79,11 +77,12 @@ void switch_to(process* proc) {
 // initialize process pool (the procs[] array). added @lab3_1
 //
 void init_proc_pool() {
-  memset( procs, 0, sizeof(process)*NPROC );
+  uint64 tp=read_tp();
+  memset( procs[tp], 0, sizeof(process)*NPROC );
 
   for (int i = 0; i < NPROC; ++i) {
-    procs[i].status = FREE;
-    procs[i].pid = i;
+    procs[tp][i].status = FREE;
+    procs[tp][i].pid = i;
   }
 }
 
@@ -92,83 +91,81 @@ void init_proc_pool() {
 // process strcuture. added @lab3_1
 //
 process* alloc_process() {
-  spinlock_lock(&procs_lock);
   // locate the first usable process structure
   int i;
+  uint64 tp=read_tp();
   for( i=0; i<NPROC; i++ ){
-    if( procs[i].status == FREE ) {
-      procs[i].status=UNAVAILABLE;
+    if( procs[tp][i].status == FREE ) {
+      procs[tp][i].status=UNAVAILABLE;
       break;
     }
   }
   if( i>=NPROC ){
     panic( "cannot find any free process structure.\n" );
-    spinlock_unlock(&procs_lock);
     return 0;
   }
 
-  spinlock_unlock(&procs_lock);
-  // init proc[i]'s vm space
-  procs[i].trapframe = (trapframe *)alloc_page();  //trapframe, used to save context
-  memset(procs[i].trapframe, 0, sizeof(trapframe));
+  // init proc[tp][i]'s vm space
+  procs[tp][i].trapframe = (trapframe *)alloc_page();  //trapframe, used to save context
+  memset(procs[tp][i].trapframe, 0, sizeof(trapframe));
 
   // page directory
-  procs[i].pagetable = (pagetable_t)alloc_page();
-  memset((void *)procs[i].pagetable, 0, PGSIZE);
+  procs[tp][i].pagetable = (pagetable_t)alloc_page();
+  memset((void *)procs[tp][i].pagetable, 0, PGSIZE);
 
-  procs[i].kstack = (uint64)alloc_page() + PGSIZE;   //user kernel stack top
+  procs[tp][i].kstack = (uint64)alloc_page() + PGSIZE;   //user kernel stack top
   uint64 user_stack = (uint64)alloc_page();       //phisical address of user stack bottom
-  procs[i].trapframe->regs.sp = USER_STACK_TOP;  //virtual address of user stack top
+  procs[tp][i].trapframe->regs.sp = USER_STACK_TOP;  //virtual address of user stack top
 
   // allocates a page to record memory regions (segments)
-  procs[i].mapped_info = (mapped_region*)alloc_page();
-  memset( procs[i].mapped_info, 0, PGSIZE );
+  procs[tp][i].mapped_info = (mapped_region*)alloc_page();
+  memset( procs[tp][i].mapped_info, 0, PGSIZE );
 
   // map user stack in userspace
-  user_vm_map((pagetable_t)procs[i].pagetable, USER_STACK_TOP - PGSIZE, PGSIZE,
+  user_vm_map((pagetable_t)procs[tp][i].pagetable, USER_STACK_TOP - PGSIZE, PGSIZE,
     user_stack, prot_to_type(PROT_WRITE | PROT_READ, 1));
-  procs[i].mapped_info[STACK_SEGMENT].va = USER_STACK_TOP - PGSIZE;
-  procs[i].mapped_info[STACK_SEGMENT].npages = 1;
-  procs[i].mapped_info[STACK_SEGMENT].seg_type = STACK_SEGMENT;
+  procs[tp][i].mapped_info[STACK_SEGMENT].va = USER_STACK_TOP - PGSIZE;
+  procs[tp][i].mapped_info[STACK_SEGMENT].npages = 1;
+  procs[tp][i].mapped_info[STACK_SEGMENT].seg_type = STACK_SEGMENT;
 
   // map trapframe in user space (direct mapping as in kernel space).
-  user_vm_map((pagetable_t)procs[i].pagetable, (uint64)procs[i].trapframe, PGSIZE,
-    (uint64)procs[i].trapframe, prot_to_type(PROT_WRITE | PROT_READ, 0));
-  procs[i].mapped_info[CONTEXT_SEGMENT].va = (uint64)procs[i].trapframe;
-  procs[i].mapped_info[CONTEXT_SEGMENT].npages = 1;
-  procs[i].mapped_info[CONTEXT_SEGMENT].seg_type = CONTEXT_SEGMENT;
+  user_vm_map((pagetable_t)procs[tp][i].pagetable, (uint64)procs[tp][i].trapframe, PGSIZE,
+    (uint64)procs[tp][i].trapframe, prot_to_type(PROT_WRITE | PROT_READ, 0));
+  procs[tp][i].mapped_info[CONTEXT_SEGMENT].va = (uint64)procs[tp][i].trapframe;
+  procs[tp][i].mapped_info[CONTEXT_SEGMENT].npages = 1;
+  procs[tp][i].mapped_info[CONTEXT_SEGMENT].seg_type = CONTEXT_SEGMENT;
 
   // map S-mode trap vector section in user space (direct mapping as in kernel space)
   // we assume that the size of usertrap.S is smaller than a page.
-  user_vm_map((pagetable_t)procs[i].pagetable, (uint64)trap_sec_start, PGSIZE,
+  user_vm_map((pagetable_t)procs[tp][i].pagetable, (uint64)trap_sec_start, PGSIZE,
     (uint64)trap_sec_start, prot_to_type(PROT_READ | PROT_EXEC, 0));
-  procs[i].mapped_info[SYSTEM_SEGMENT].va = (uint64)trap_sec_start;
-  procs[i].mapped_info[SYSTEM_SEGMENT].npages = 1;
-  procs[i].mapped_info[SYSTEM_SEGMENT].seg_type = SYSTEM_SEGMENT;
+  procs[tp][i].mapped_info[SYSTEM_SEGMENT].va = (uint64)trap_sec_start;
+  procs[tp][i].mapped_info[SYSTEM_SEGMENT].npages = 1;
+  procs[tp][i].mapped_info[SYSTEM_SEGMENT].seg_type = SYSTEM_SEGMENT;
 
   sprint("in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",
-    procs[i].trapframe, procs[i].trapframe->regs.sp, procs[i].kstack);
+    procs[tp][i].trapframe, procs[tp][i].trapframe->regs.sp, procs[tp][i].kstack);
 
   // initialize the process's heap manager
-  procs[i].user_heap.heap_top = USER_FREE_ADDRESS_START;
-  procs[i].user_heap.heap_bottom = USER_FREE_ADDRESS_START;
-  procs[i].user_heap.free_pages_count = 0;
+  procs[tp][i].user_heap.heap_top = USER_FREE_ADDRESS_START;
+  procs[tp][i].user_heap.heap_bottom = USER_FREE_ADDRESS_START;
+  procs[tp][i].user_heap.free_pages_count = 0;
 
   // map user heap in userspace
-  procs[i].mapped_info[HEAP_SEGMENT].va = USER_FREE_ADDRESS_START;
-  procs[i].mapped_info[HEAP_SEGMENT].npages = 0;  // no pages are mapped to heap yet.
-  procs[i].mapped_info[HEAP_SEGMENT].seg_type = HEAP_SEGMENT;
+  procs[tp][i].mapped_info[HEAP_SEGMENT].va = USER_FREE_ADDRESS_START;
+  procs[tp][i].mapped_info[HEAP_SEGMENT].npages = 0;  // no pages are mapped to heap yet.
+  procs[tp][i].mapped_info[HEAP_SEGMENT].seg_type = HEAP_SEGMENT;
 
-  procs[i].total_mapped_region = 4;
+  procs[tp][i].total_mapped_region = 4;
 
   // initialize files_struct
-  procs[i].pfiles = init_proc_file_management();
+  procs[tp][i].pfiles = init_proc_file_management();
   sprint("in alloc_proc. build proc_file_management successfully.\n");
 
   // return after initialization.
-  procs[i].waiting_for_child=-1;
-  procs[i].trapframe->regs.tp=read_tp();
-  return &procs[i];
+  procs[tp][i].waiting_for_child=-1;
+  procs[tp][i].trapframe->regs.tp=read_tp();
+  return &procs[tp][i];
 }
 
 //
@@ -387,8 +384,8 @@ int do_exec(char *command, char *para){
 
 uint64 do_wait(uint64 pid){
   uint64 tp = read_tp();
-  if(procs[pid].status==FREE||procs[pid].parent!=current[tp])return -1;
-  if(procs[pid].status==ZOMBIE)return 0;
+  if(procs[tp][pid].status==FREE||procs[tp][pid].parent!=current[tp])return -1;
+  if(procs[tp][pid].status==ZOMBIE)return 0;
   current[tp]->waiting_for_child=pid;
   current[tp]->status=BLOCKED;
   schedule();
