@@ -194,7 +194,6 @@ int print_backtrace(int depth) {
 static mem_node free_mem_list={sizeof(mem_node),0};
 
 void* better_malloc(uint64 size){
-  asm volatile ("" : : "" (free_mem_list));//阻止编译器优化掉全局变量
   // printu("%d\n",*(uint64*)(0x0000000000011be8));
   mem_node *pre,*p,*temp;
   // printu("%p %p %p %p\n",&pre,&p,&temp,&free_mem_list);

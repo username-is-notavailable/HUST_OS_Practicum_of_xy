@@ -244,7 +244,7 @@ elf_status elf_load(elf_ctx *ctx) {
       sprint( "CODE_SEGMENT added at mapped info offset:%d\n", j );
     }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = DATA_SEGMENT;
-      sprint( "DATA_SEGMENT added at mapped info offset:%d\n", j );
+      sprint( "DATA_SEGMENT added at mapped info offset:%d va:%p\n", j, ph_addr.vaddr );
     }else
       panic( "unknown program segment encountered, segment flag:%d.\n", ph_addr.flags );
 
@@ -373,11 +373,13 @@ elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
     // strcpy(p->symbols[i].name,symbolstr + temp_sym.st_name);
     // sprint("%d: %s\n",i,temp_sym.st_name+symbolstr);
     // if(!strcmp(temp_sym.st_name+symbolstr,"free_mem_list")){
-    //   sprint("%d\n",temp_sym.st_value);
+      // sprint("%d\n",temp_sym.st_value);
     // }
+    // sprint("%s  %p\n",temp_sym.st_name+symbolstr,temp_sym.st_value);
     p->symbols[i].name=temp_sym.st_name;
     p->symbols[i].value=temp_sym.st_value;
     p->symbols[i].end=temp_sym.st_value+temp_sym.st_size;
+    if(!strcmp(temp_sym.st_name+symbolstr,"__global_pointer$"))p->trapframe->regs.gp=temp_sym.st_value;
   }
   p->symbols_names=symbolstr;
   // sprint("%s\n",symbolstr+1);

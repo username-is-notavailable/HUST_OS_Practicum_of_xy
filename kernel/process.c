@@ -265,6 +265,17 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
         child->total_mapped_region++;
         break;
+      case DATA_SEGMENT:
+        user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[i].va, PGSIZE*parent->mapped_info[i].npages, 
+                      lookup_pa(parent->pagetable,parent->mapped_info[i].va),
+                      prot_to_type(PROT_COW | PROT_READ, 1));
+        sprint("do_fork map data segment at pa:%lx of parent to child at va:%lx.\n",lookup_pa(parent->pagetable,parent->mapped_info[i].va),parent->mapped_info[i].va);
+        // after mapping, register the vm region (do not delete codes below!)
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
+        child->total_mapped_region++;
     }
   }
 
