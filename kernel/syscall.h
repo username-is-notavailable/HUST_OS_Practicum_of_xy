@@ -41,6 +41,10 @@
 #define SYS_user_sem_P (SYS_user_base + 35)
 #define SYS_user_sem_V (SYS_user_base + 36)
 
+// added @lab4_ch1
+#define SYS_user_rcwd (SYS_user_base+37)
+#define SYS_user_ccwd (SYS_user_base+38)
+
 
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7);
 

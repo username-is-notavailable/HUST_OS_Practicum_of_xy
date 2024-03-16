@@ -56,4 +56,7 @@ int sem_new(int init);
 void sem_P(int num);
 void sem_V(int num);
 
+int read_cwd(char *path);
+int change_cwd(const char *path);
+
 #endif
