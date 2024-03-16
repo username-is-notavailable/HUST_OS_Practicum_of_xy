@@ -24,8 +24,8 @@ typedef struct elf_info_t {
 static void *elf_alloc_mb(elf_ctx *ctx, uint64 elf_pa, uint64 elf_va, uint64 size) {
   elf_info *msg = (elf_info *)ctx->info;
   // we assume that size of proram segment is smaller than a page.
-  kassert(size < PGSIZE);
-  void *pa = alloc_page();
+  // kassert(size < PGSIZE);
+  void *pa = alloc_page((size - 1)/PGSIZE + 1);
   if (pa == 0) panic("uvmalloc mem alloc falied\n");
 
   memset((void *)pa, 0, PGSIZE);
@@ -224,27 +224,26 @@ elf_status elf_load(elf_ctx *ctx) {
     if (ph_addr.vaddr + ph_addr.memsz < ph_addr.vaddr) return EL_ERR;
 
     // allocate memory block before elf loading
+    uint64 page_num=(ph_addr.memsz-1)/PGSIZE+1;
     void *dest = elf_alloc_mb(ctx, ph_addr.vaddr, ph_addr.vaddr, ph_addr.memsz);
 
     // actual loading
     if (elf_fpread(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
       return EL_EIO;
 
-    // record the vm region in proc->mapped_info. added @lab3_1
-    int j;
-    for( j=0; j<PGSIZE/sizeof(mapped_region); j++ ) //seek the last mapped region
-      if( (process*)(((elf_info*)(ctx->info))->p)->mapped_info[j].va == 0x0 ) break;
-
-    ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].va = ph_addr.vaddr;
-    ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].npages = 1;
-
     // SEGMENT_READABLE, SEGMENT_EXECUTABLE, SEGMENT_WRITABLE are defined in kernel/elf.h
     if( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_EXECUTABLE) ){
-      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = CODE_SEGMENT;
-      sprint( "CODE_SEGMENT added at mapped info offset:%d\n", j );
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].seg_type = CODE_SEGMENT;
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].npages = page_num;
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].va = ph_addr.vaddr;
+
+      sprint( "CODE_SEGMENT added at mapped info offset:%d\n", CODE_SEGMENT );
     }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
-      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[j].seg_type = DATA_SEGMENT;
-      sprint( "DATA_SEGMENT added at mapped info offset:%d va:%p\n", j, ph_addr.vaddr );
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].seg_type = DATA_SEGMENT;
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].npages = page_num;
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].va = ph_addr.vaddr;
+
+      sprint( "DATA_SEGMENT added at mapped info offset:%d\n", DATA_SEGMENT );
     }else
       panic( "unknown program segment encountered, segment flag:%d.\n", ph_addr.flags );
 
@@ -268,7 +267,6 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // sprint("%s\n",filename);
 
   info.f = vfs_open(filename, O_RDONLY);
-  // sprint("&&&&&&&&&&&&&&&&&&&&&&&&\n");
   info.p = p;
   // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
   if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
@@ -284,45 +282,6 @@ void load_bincode_from_host_elf(process *p, char *filename) {
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;
-
-  // close the vfs file
-  vfs_close( info.f );
-
-  sprint("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
-}
-
-void load_bincode_from_host_elf_with_para(process *p, char *filename, char *para) {
-  sprint("Application: %s\n", filename);
-
-  //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
-  elf_ctx elfloader;
-  // elf_info is defined above, used to tie the elf file and its corresponding process.
-  elf_info info;
-
-  info.f = vfs_open(filename, O_RDONLY);
-  info.p = p;
-  // IS_ERR_VALUE is a macro defined in spike_interface/spike_htif.h
-  if (IS_ERR_VALUE(info.f)) panic("Fail on openning the input application program.\n");
-
-  // init elfloader context. elf_init() is defined above.
-  if (elf_init(&elfloader, &info) != EL_OK)
-    panic("fail to init elfloader.\n");
-
-  // load elf. elf_load() is defined above.
-  if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
-
-  if (elf_load_names_of_symbols_and_debugline(&elfloader,p) != EL_OK)panic("Fail on loading symbols.\n");
-
-  // entry (virtual, also physical in lab1_x) address
-  p->trapframe->epc = elfloader.ehdr.entry;
-
-  int len = (strlen(para)/8+1)*8;
-  uint64 sp=(p->trapframe->regs.sp-=len);
-  strcpy((char*)user_va_to_pa(p->pagetable,(void*)sp),para);
-  sp=(p->trapframe->regs.sp-=8);
-  (*(uint64*)user_va_to_pa(p->pagetable,(void*)sp))=sp+8;
-  p->trapframe->regs.a0=1;
-  p->trapframe->regs.a1=sp;
 
   // close the vfs file
   vfs_close( info.f );
@@ -336,7 +295,7 @@ void load_bincode_from_host_elf_with_para(process *p, char *filename, char *para
 elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
   uint64 shoff = ctx->ehdr.shoff;
   uint16 shnum = ctx->ehdr.shnum;
-  bool found_symbol=FALSE,found_strtab=FALSE;
+  bool found_symbol=FALSE,found_strtab=FALSE,found_debugline=FALSE;
   elf_section_header shstrhr, temp_sh, symbol_sh, strtab_sh;
   symbol_table temp_sym;
   if(elf_fpread(ctx, &shstrhr,sizeof(elf_section_header), shoff + ctx->ehdr.shstrndx*sizeof(elf_section_header)) != sizeof(elf_section_header)) panic("Error in elf_load_names_of_symbols when read shstrhr.\n");
@@ -350,23 +309,25 @@ elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
     // sprint("%s\n",temp_sh.sh_name+shstr);
     if(temp_sh.sh_type==SHT_SYMTAB){
       symbol_sh=temp_sh;
-      found_symbol=1;
+      found_symbol=TRUE;
     }
     else if(temp_sh.sh_type==SHT_STRTAB&&!strcmp(temp_sh.sh_name+shstr,".strtab")){
       strtab_sh=temp_sh;
-      found_strtab=1;
+      found_strtab=TRUE;
     }
     else if(!strcmp(temp_sh.sh_name+shstr,".debug_line")){
+      found_debugline=TRUE;
       void *debug_line=alloc_pages(ROUNDUP(temp_sh.sh_size*3,PGSIZE)/PGSIZE);
       if(elf_fpread(ctx, debug_line, temp_sh.sh_size, temp_sh.sh_offset) != temp_sh.sh_size) return EL_EIO;
       make_addr_line(ctx, debug_line, temp_sh.sh_size);
     }
-    if (found_strtab&&found_symbol)break;
+    if (found_strtab&&found_symbol&&found_debugline)break;
   }
-  void* symbolstr = alloc_page();
+  void* symbolstr = alloc_page((strtab_sh.sh_size-1)/PGSIZE+1);
   // sprint("%lld\n",strtab_sh.sh_size);
   if(elf_fpread(ctx, symbolstr, strtab_sh.sh_size, strtab_sh.sh_offset) != strtab_sh.sh_size) panic("Error in elf_load_names_of_symbols when read symbols.\n");
   p->symbol_num=symbol_sh.sh_size/sizeof(symbol_table);
+  p->symbols=alloc_pages((p->symbol_num*sizeof(symbol)-1)/PGSIZE+1);
   // sprint("%lf\n",p->symbol_num);
   for(int i=0;i<p->symbol_num;i++){
     if(elf_fpread(ctx, &temp_sym, sizeof(symbol_table), symbol_sh.sh_offset + i *sizeof(symbol_table)) != sizeof(symbol_table)) panic("Error in elf_load_names_of_symbols when read temp_sym.\n");

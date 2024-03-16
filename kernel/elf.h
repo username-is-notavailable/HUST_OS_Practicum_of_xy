@@ -139,7 +139,6 @@ elf_status elf_init(elf_ctx *ctx, void *info);
 elf_status elf_load(elf_ctx *ctx);
 
 void load_bincode_from_host_elf(process *p, char *filename);
-void load_bincode_from_host_elf_with_para(process *p, char *filename, char *para);
 elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p);
 
 #endif

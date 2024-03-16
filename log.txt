@@ -1,0 +1,35 @@
+HTIF is available!
+(Emulated) memory size: 2048 MB
+In m_start, hartid:0
+hartid = 0: Enter supervisor mode...
+PKE kernel start 0x0000000080000000, PKE kernel end: 0x0000000080014000, PKE kernel size: 0x0000000000014000 .
+free physical memory address: [0x0000000080014000, 0x0000000087ffffff] 
+kernel memory manager is initializing ...
+KERN_BASE 0x0000000080000000
+physical address of _etext is: 0x000000008000b000
+RAMDISK0: base address of RAMDISK0 is: 0x0000000080063000
+RFS: format RAMDISK0 done!
+kernel page table is on 
+Switch to user mode...
+in alloc_proc. user frame 0x00000000800ee000, user stack 0x000000007ffff000, user kstack 0x00000000800f1000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+User application is loading.
+Application: /bin/app_exec
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5
+Application program entry point (virtual address): 0x00000000000100e8
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+
+======== exec /bin/app_ls in app_exec ========
+Application: /bin/app_ls
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5
+Application program entry point (virtual address): 0x00000000000100e8
+---------- ls command -----------
+ls "":
+[name]               [inode_num]
+hostfs_readdir not implemented!
+
+System is shutting down with exit code -1.

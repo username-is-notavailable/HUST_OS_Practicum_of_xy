@@ -63,8 +63,8 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // panic( "You need to implement the operations that actually handle the page fault in lab2_3.\n" );
       uint64 tp=read_tp();
       pte_t *pte = page_walk(current[tp]->pagetable, stval, FALSE);
-      void* pa=alloc_page();
       if(pte&&(*pte)&PTE_COW){
+        void* pa=alloc_page();
         uint64 page_pa=lookup_pa(current[tp]->pagetable,stval);
         // sprint("%x\n",page_pa);
         if(!page_pa){
@@ -74,11 +74,21 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
         memcpy(pa,(void*)page_pa,PGSIZE);
         // sprint("unmap\n");
         user_vm_unmap(current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE),PGSIZE,FALSE);
+        user_vm_map((pagetable_t)current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)pa,
+         prot_to_type(PROT_WRITE | PROT_READ, 1));
       }
       else if(stval < current[tp]->trapframe->regs.sp - PGSIZE*20) panic("this address is not available!");
+      else{
+        uint64 vist_page_va=ROUNDDOWN(stval,PGSIZE);
+        void *pa;
+        for(uint64 i=vist_page_va;i<current[tp]->mapped_info[STACK_SEGMENT].va;i+=PGSIZE){
+          if((pa=alloc_page())==NULL)panic("handle page fault!\n");
+          user_vm_map(current[tp]->pagetable,i,PGSIZE,(uint64)i,prot_to_type(PROT_WRITE | PROT_READ, 1));
+        }
+        current[tp]->mapped_info[STACK_SEGMENT].va=vist_page_va;
+      }
       // sprint("!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-      user_vm_map((pagetable_t)current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)pa,
-         prot_to_type(PROT_WRITE | PROT_READ, 1));
+      
       break;
     default:
       sprint("unknown page fault.\n");

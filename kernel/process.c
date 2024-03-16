@@ -165,7 +165,7 @@ process* alloc_process() {
   sprint("in alloc_proc. build proc_file_management successfully.\n");
 
   // return after initialization.
-  procs[tp][i].waiting_for_child=-1;
+  procs[tp][i].waiting_for_child=0;
   procs[tp][i].trapframe->regs.tp=read_tp();
   return &procs[tp][i];
 }
@@ -293,48 +293,26 @@ void reallocate_process(process* p){
 
   uint64 tp = read_tp();
 
-  for(uint64 i=ROUNDDOWN(p->trapframe->regs.sp,PGSIZE);
-    i<USER_STACK_TOP;i+=PGSIZE)
-    user_vm_unmap(p->pagetable,i,PGSIZE,TRUE);
+  //unmap stack
+  user_vm_unmap(p->pagetable,p->mapped_info[STACK_SEGMENT].va,p->mapped_info[STACK_SEGMENT].npages*PGSIZE,TRUE);
   
-  int free_block_filter[MAX_HEAP_PAGES];
-  memset(free_block_filter, 0, MAX_HEAP_PAGES);
-  uint64 heap_bottom = current[tp]->user_heap.heap_bottom;
-  for (int i = 0; i < current[tp]->user_heap.free_pages_count; i++) {
-    int index = (current[tp]->user_heap.free_pages_address[i] - heap_bottom) / PGSIZE;
-    free_block_filter[index] = 1;
-  }
+  //unmap heap 
+  __user_vm_unmap_with_cow(p->pagetable,p->mapped_info[HEAP_SEGMENT].va,p->mapped_info[HEAP_SEGMENT].npages*PGSIZE);
+  
+  //unmap data sigment if exist
+  if(DATA_SEGMENT<p->total_mapped_region)__user_vm_unmap_with_cow(p->pagetable,p->mapped_info[DATA_SEGMENT].va,p->mapped_info[DATA_SEGMENT].npages*PGSIZE);
 
-  // clean and map the heap blocks
-  for (uint64 heap_block = current[tp]->user_heap.heap_bottom;
-        heap_block < current[tp]->user_heap.heap_top; heap_block += PGSIZE) {
-    if (free_block_filter[(heap_block - heap_bottom) / PGSIZE])  // skip free blocks
-      continue;
-
-    user_vm_unmap(current[tp]->pagetable,heap_block,PGSIZE,TRUE);
-  }
-
-  user_vm_unmap(p->pagetable,(uint64)(p->trapframe),PGSIZE,TRUE);
-  free_page((void*)ROUNDDOWN(p->kstack-1,PGSIZE));
-  free_page((void*)p->mapped_info);
+  //unmap code segment
+  user_vm_unmap(p->pagetable,p->mapped_info[CODE_SEGMENT].va,p->mapped_info[CODE_SEGMENT].npages*PGSIZE,FALSE);
 
   // sprint("Something wrong\n");
 
   // init proc[i]'s vm space
-  p->trapframe = (trapframe *)alloc_page();  //trapframe, used to save context
   memset(p->trapframe, 0, sizeof(trapframe));
 
-  // page directory
-  // p->pagetable = (pagetable_t)alloc_page();
-  memset((void *)p->pagetable, 0, PGSIZE);
-
-  p->kstack = (uint64)alloc_page() + PGSIZE;   //user kernel stack top
+  p->kstack = ROUNDDOWN(p->kstack, PGSIZE);   //user kernel stack top
   uint64 user_stack = (uint64)alloc_page();       //phisical address of user stack bottom
   p->trapframe->regs.sp = USER_STACK_TOP;  //virtual address of user stack top
-
-  // allocates a page to record memory regions (segments)
-  p->mapped_info = (mapped_region*)alloc_page();
-  memset( p->mapped_info, 0, PGSIZE );
 
   // map user stack in userspace
   user_vm_map((pagetable_t)p->pagetable, USER_STACK_TOP - PGSIZE, PGSIZE,
@@ -342,21 +320,6 @@ void reallocate_process(process* p){
   p->mapped_info[STACK_SEGMENT].va = USER_STACK_TOP - PGSIZE;
   p->mapped_info[STACK_SEGMENT].npages = 1;
   p->mapped_info[STACK_SEGMENT].seg_type = STACK_SEGMENT;
-
-  // map trapframe in user space (direct mapping as in kernel space).
-  user_vm_map((pagetable_t)p->pagetable, (uint64)p->trapframe, PGSIZE,
-    (uint64)p->trapframe, prot_to_type(PROT_WRITE | PROT_READ, 0));
-  p->mapped_info[CONTEXT_SEGMENT].va = (uint64)p->trapframe;
-  p->mapped_info[CONTEXT_SEGMENT].npages = 1;
-  p->mapped_info[CONTEXT_SEGMENT].seg_type = CONTEXT_SEGMENT;
-
-  // map S-mode trap vector section in user space (direct mapping as in kernel space)
-  // we assume that the size of usertrap.S is smaller than a page.
-  user_vm_map((pagetable_t)p->pagetable, (uint64)trap_sec_start, PGSIZE,
-    (uint64)trap_sec_start, prot_to_type(PROT_READ | PROT_EXEC, 0));
-  p->mapped_info[SYSTEM_SEGMENT].va = (uint64)trap_sec_start;
-  p->mapped_info[SYSTEM_SEGMENT].npages = 1;
-  p->mapped_info[SYSTEM_SEGMENT].seg_type = SYSTEM_SEGMENT;
 
   // sprint("in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",
   //   p->trapframe, p->trapframe->regs.sp, p->kstack);
@@ -372,11 +335,15 @@ void reallocate_process(process* p){
   p->mapped_info[HEAP_SEGMENT].seg_type = HEAP_SEGMENT;
 
   p->total_mapped_region = 4;
-  // sprint("Where is the error?\n");
 
   // initialize files_struct
   // p->pfiles = init_proc_file_management();
-  p->waiting_for_child=-1;
+  p->waiting_for_child=0;
+
+  free_page(p->debugline);
+  free_page(p->symbols_names);
+  free_page(p->symbols);
+
 }
 
 int do_exec(char *command, char *para){
@@ -394,8 +361,15 @@ int do_exec(char *command, char *para){
   // sprint("Where is the error?\n");
   // sprint("\ncommand:%s para: %s\n\n",command_buf,para_buf);
 
+  load_bincode_from_host_elf(current[tp],command);
 
-  load_bincode_from_host_elf_with_para(current[tp], command_buf, para_buf);
+  int len = (strlen(para)/8+1)*8;
+  uint64 sp=(current[tp]->trapframe->regs.sp-=len);
+  strcpy((char*)user_va_to_pa(current[tp]->pagetable,(void*)sp),para);
+  sp=(current[tp]->trapframe->regs.sp-=8);
+  (*(uint64*)user_va_to_pa(current[tp]->pagetable,(void*)sp))=sp+8;
+  current[tp]->trapframe->regs.a0=1;
+  current[tp]->trapframe->regs.a1=sp;
 
   return 0;
 }

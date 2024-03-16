@@ -206,6 +206,19 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   }
 }
 
+void __user_vm_unmap_with_cow(pagetable_t page_dir, uint64 va, uint64 size) {
+  for (uint64 first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
+      first <= last; first += PGSIZE) {
+    pte_t *pte=page_walk(page_dir, first, 1);
+    if (pte == NULL) continue;
+    if (!(*pte & PTE_COW)){
+      void *pa=(void*)lookup_pa(page_dir, va);
+      if(pa)free_page(pa);
+      }
+    *pte&=(~PTE_V);
+  }
+}
+
 //
 // debug function, print the vm space of a process. added @lab3_1
 //

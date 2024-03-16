@@ -114,7 +114,7 @@ typedef struct process_t {
 
   int waiting_for_child;
 
-  symbol symbols[MAX_SYMBOL];
+  symbol* symbols;
 
   uint64 symbol_num;
 

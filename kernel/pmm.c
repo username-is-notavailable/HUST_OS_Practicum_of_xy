@@ -60,6 +60,11 @@ static void create_freepage_list(uint64 start, uint64 end) {
 
 static void *__alloc_p(uint64 pages){
   spinlock_lock(&g_free_mem_list_lock);
+
+  // sprint("allocate");
+  // for(list_node *p=g_free_mem_list.next;p;p=p->next)sprint("->%d",p->pages);
+  // sprint("\n");
+
   list_node *pre, *p;
   for(pre=&g_free_mem_list,p=pre->next;p;pre=p,p=p->next)
     if(p->pages>=pages)break;
@@ -76,6 +81,7 @@ static void *__alloc_p(uint64 pages){
     return (void*)p;
   }
   pre->next=p->next;
+
   spinlock_unlock(&g_free_mem_list_lock);
   return (void*)p;
 }
@@ -96,6 +102,10 @@ void free_page(void *pa) {
   if(!p)panic("free_page 0x%lx \n", pa);
 
   spinlock_lock(&g_free_mem_list_lock);
+
+  // sprint("free");
+  // for(list_node *p=g_free_mem_list.next;p;p=p->next)sprint("->%d",p->pages);
+  // sprint("\n");
 
   list_node *new_node=(list_node*)(p->pa), *npre=&g_free_mem_list, *np=npre->next;
   new_node->pages=p->pages;
