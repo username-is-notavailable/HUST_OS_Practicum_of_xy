@@ -149,6 +149,39 @@ void *alloc_pages(uint64 pages) {
   return (void *)p;
 }
 
+void *realloc_pages(void *pa, uint64 pages){
+  spinlock_lock(&manager_lock);
+  pmm_manager *m=pmm_hash_get(pa);
+  if(!m)panic("reallocte error pa");
+  if(m->pages>=pages){
+    spinlock_unlock(&manager_lock);
+    return pa;
+  }
+  spinlock_lock(&g_free_mem_list_lock);
+  list_node *pre=&g_free_mem_list,*p=pre->next;
+  while(p&&(void*)p<pa)pre=p,p=p->next;
+  if(p&&(pa+m->pages)==p&&p->pages>=(pages-m->pages)){
+    if(p->pages==(pages-m->pages)){
+      pre->next=p->next;
+      m->pages=pages;
+      spinlock_unlock(&g_free_mem_list_lock);
+      spinlock_unlock(&manager_lock);
+      return pa;
+    }
+  }
+
+  spinlock_unlock(&g_free_mem_list_lock);
+  spinlock_unlock(&manager_lock);
+
+  void *new_mem=(void*)alloc_pages(pages);
+
+  memcpy(new_mem, pa, m->pages*PGSIZE);
+
+  free_page(pa);
+
+  return new_mem;
+}
+
 //
 // pmm_init() establishes the list of free physical pages according to available
 // physical memory space.
