@@ -127,6 +127,12 @@ typedef struct process_t {
   char **dir; code_file *file; addr_line *line; int line_ind;
 }process;
 
+typedef struct semaphores_t{
+  bool is_aviliable;
+  int64 sem;
+  process *wait_queue;
+}semaphores;
+
 // switch to run user app
 void switch_to(process*);
 
@@ -145,5 +151,7 @@ uint64 do_wait(uint64 pid);
 
 // current running process
 extern process* current[NCPU];
+
+extern semaphores sems[MAX_SEMAPHORES_NUM];
 
 #endif

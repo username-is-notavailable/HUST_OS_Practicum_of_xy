@@ -15,4 +15,6 @@
 
 #define MAX_SYMBOL 512
 
+#define MAX_SEMAPHORES_NUM 64
+
 #endif

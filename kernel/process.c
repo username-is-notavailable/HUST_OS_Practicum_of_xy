@@ -34,6 +34,8 @@ process procs[NCPU][NPROC];
 // current points to the currently running user-mode application.
 process* current[NCPU];
 
+semaphores sems[MAX_SEMAPHORES_NUM];
+
 //
 // switch to a user-mode process
 //

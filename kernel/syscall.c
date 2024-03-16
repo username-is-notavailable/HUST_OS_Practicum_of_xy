@@ -17,6 +17,7 @@
 #include "sync_utils.h"
 
 #include "spike_interface/spike_utils.h"
+#include "spike_interface/atomic.h"
 
 //
 // implement the SYS_user_print syscall
@@ -268,6 +269,70 @@ ssize_t sys_user_printpa(uint64 va)
   return 0;
 }
 
+spinlock_t semaphores_lock=SPINLOCK_INIT;
+
+uint64 sys_user_new_sem(int64 init){
+  if(init<0)panic("semaphores can't be sub-zero!\n");
+  spinlock_lock(&semaphores_lock);
+  for(int i=0;i<MAX_SEMAPHORES_NUM;i++){
+    if(sems[i].is_aviliable){
+      sems[i].is_aviliable=FALSE;
+      sems[i].sem=init;
+      sems[i].wait_queue=NULL;
+      spinlock_unlock(&semaphores_lock);
+      return i;
+    }
+  }
+  spinlock_unlock(&semaphores_lock);
+  panic("semaphores are not enough!\n");
+  return -1;
+}
+
+uint64 sys_user_sem_P(uint64 num){
+  uint64 tp=read_tp();
+  assert(sems[num].is_aviliable==FALSE);
+  sems[num].sem--;
+  if(sems[num].sem<0){
+    // sprint("[%d,%d]\n",num,sems[num].sem);
+    current[tp]->status=BLOCKED;
+    if(sems[num].wait_queue){
+      process *p=sems[num].wait_queue;
+      while(p->queue_next)p=p->queue_next;
+      p->queue_next=current[tp];
+      current[tp]->queue_next=NULL;
+    }
+    else{
+      sems[num].wait_queue=current[tp];
+      current[tp]->queue_next=NULL;
+    }
+    schedule();
+  }
+
+  // sprint("                                P sems%d :%d\n",num,sems[num].sem);
+
+  return 0;
+}
+
+uint64 sys_user_sem_V(uint64 num){
+  assert(sems[num].is_aviliable==FALSE);
+  if(sems[num].sem<0){
+    // sprint("adfasdfsdfadfas");
+    assert(sems[num].wait_queue);
+    process *p=sems[num].wait_queue;
+    // if(num==0)sprint("sem[0]:%d\n",sems[0].sem);
+    sems[num].wait_queue=p->queue_next;
+    p->status=READY;
+    // sprint("insert--------------------------------------------------------------\n");
+    insert_to_ready_queue(p);
+
+  }
+  sems[num].sem++;
+  // sprint("here\n");
+  // sprint("                                V sems%d :%d\n",num,sems[num].sem);
+
+  return 0;
+}
+
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -324,6 +389,12 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_print_backtrace(a0);
     case SYS_user_printpa:
       return sys_user_printpa(a1);
+    case SYS_user_sem_new:
+      return sys_user_new_sem(a1);
+    case SYS_user_sem_P:
+      return sys_user_sem_P(a1);
+    case SYS_user_sem_V:
+      return sys_user_sem_V(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

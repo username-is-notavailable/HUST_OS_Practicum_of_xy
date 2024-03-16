@@ -52,4 +52,8 @@ void better_free(void* va);
 
 void printpa(int* va);
 
+int sem_new(int init);
+void sem_P(int num);
+void sem_V(int num);
+
 #endif

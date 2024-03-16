@@ -105,6 +105,7 @@ int s_start(void) {
     // init file system, added @lab4_1
     fs_init();
 
+    for(int i=0;i<MAX_SEMAPHORES_NUM;i++)sems[i].is_aviliable=TRUE;
   }
 
   sync_barrier(&s_start_barrier,NCPU);
