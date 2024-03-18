@@ -17,4 +17,6 @@
 
 #define MAX_SEMAPHORES_NUM 64
 
+#define HASH_TABLE_PAGES 4
+
 #endif

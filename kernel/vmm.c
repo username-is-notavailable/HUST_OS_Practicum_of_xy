@@ -10,6 +10,99 @@
 #include "util/string.h"
 #include "spike_interface/spike_utils.h"
 #include "util/functions.h"
+#include "spike_interface/atomic.h"
+
+typedef struct page_map_mananger_t{
+  void *pa;
+  struct page_map_mananger_t *next;
+  uint64 map_count;
+}page_map_mananger;
+
+page_map_mananger *page_map_hash_table, free_page_map_managers;
+spinlock_t map_manager_lock=SPINLOCK_INIT;
+
+void vm_map_managers_init(){
+  page_map_hash_table=alloc_pages(HASH_TABLE_PAGES);
+  free_page_map_managers.next=NULL;
+}
+
+void add_free_map_managers(){
+  if(free_page_map_managers.next){
+    sprint("Needn't add free_page_map_managers\n");
+    return;
+  }
+  page_map_mananger *new_managers=(page_map_mananger*)alloc_page();
+  if(!new_managers)panic("no more vm map manager!\n");
+  uint64 managers_num=PGSIZE/sizeof(page_map_mananger);
+  for (int i = 1; i < managers_num; i++)
+    new_managers[i-1].next=new_managers+i;
+  new_managers[managers_num-1].next=NULL;
+
+  free_page_map_managers.next=new_managers;
+}
+
+uint64 map_manager_hash(void* pa){
+  return (((uint64)pa)>>PGSHIFT)%(HASH_TABLE_PAGES*PGSIZE/sizeof(page_map_mananger));
+}
+
+page_map_mananger *page_map_hash_get(void*pa){
+  page_map_mananger *p;
+  spinlock_lock(&map_manager_lock);
+  for(p=page_map_hash_table[map_manager_hash(pa)].next;p;p=p->next)
+    if(p->pa==pa)break;
+  spinlock_unlock(&map_manager_lock);
+  return p;
+}
+
+page_map_mananger* page_map_hash_put(void*pa){
+  spinlock_lock(&map_manager_lock);
+  if(!free_page_map_managers.next){
+    add_free_map_managers(alloc_page());
+  }
+  page_map_mananger *p=free_page_map_managers.next;
+  free_page_map_managers.next=p->next;
+  p->pa=pa;
+  p->map_count=0;
+
+  uint64 hash_index=map_manager_hash(pa);
+  p->next=page_map_hash_table[hash_index].next;
+  page_map_hash_table[hash_index].next=p;
+
+  spinlock_unlock(&map_manager_lock);
+  return p;
+}
+
+page_map_mananger *page_map_hash_erase(page_map_mananger* p){
+  if(!p)return NULL;
+
+  spinlock_lock(&map_manager_lock);
+
+  page_map_mananger *pre = page_map_hash_table + map_manager_hash(p->pa);
+  while(pre&&pre->next!=p)pre=pre->next;
+
+  pre->next=p->next;
+
+  p->next=free_page_map_managers.next;
+  free_page_map_managers.next=p;
+
+  spinlock_unlock(&map_manager_lock);
+
+  return p;
+}
+
+uint64 map_manager_count_increase(page_map_mananger *m){
+  spinlock_lock(&map_manager_lock);
+  uint64 r=(++m->map_count);
+  spinlock_unlock(&map_manager_lock);
+  return r;
+}
+
+uint64 map_manager_count_decrease(page_map_mananger *m){
+  spinlock_lock(&map_manager_lock);
+  uint64 r=(--m->map_count);
+  spinlock_unlock(&map_manager_lock);
+  return r;
+}
 
 /* --- utility functions for virtual address mapping --- */
 //
@@ -27,6 +120,12 @@ int map_pages(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int perm)
       panic("map_pages fails on mapping va (0x%lx) to pa (0x%lx)", first, pa);
     *pte = PA2PTE(pa) | perm | PTE_V;
   }
+
+  page_map_mananger *p=page_map_hash_get((void*)pa);
+  if(!p)p=page_map_hash_put((void*)pa);
+
+  map_manager_count_increase(p);
+
   return 0;
 }
 
@@ -194,28 +293,31 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
   pte_t *pte;
   for (first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
       first <= last; first += PGSIZE) {
-    if ((pte = page_walk(page_dir, first, 1)) == 0) return ;
-    if (*pte & PTE_V){
-      if(free){
-        pa=(void*)lookup_pa(page_dir, va);
-        if(pa)free_page(pa);
-        else return;
-      }
-      *pte&=(~PTE_V);
+    // sprint("first:%p\n",first);
+    if ((pte = page_walk(page_dir, first, FALSE)) == 0) continue;
+    pa=(void*)lookup_pa(page_dir, va);
+    page_map_mananger *m=page_map_hash_get(pa);
+    uint64 count=0;
+    if(m)count=map_manager_count_decrease(m);
+    if(free){
+      if(count)sprint("Warrning! Freeing page which is mapped by other process may be not safe!\n");
+      if(m)page_map_hash_erase(m);
+      if(pa)free_page(pa);
+      // else sprint("pte:%p pd::::::::::::::::%p\n",pte,pa);
     }
+    *pte&=(~PTE_V);
   }
 }
 
 void __user_vm_unmap_with_cow(pagetable_t page_dir, uint64 va, uint64 size) {
+  // sprint("va: %p size: %d\n",va,size);
   for (uint64 first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
       first <= last; first += PGSIZE) {
+    sprint("first:%p\n",first);
     pte_t *pte=page_walk(page_dir, first, 1);
     if (pte == NULL) continue;
-    if (!(*pte & PTE_COW)){
-      void *pa=(void*)lookup_pa(page_dir, va);
-      if(pa)free_page(pa);
-      }
-    *pte&=(~PTE_V);
+    sprint("do unmap\n");
+    user_vm_unmap(page_dir,va,PGSIZE,!(*pte & PTE_COW));
   }
 }
 

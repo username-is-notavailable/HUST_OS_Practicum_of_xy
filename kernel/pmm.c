@@ -7,6 +7,14 @@
 #include "spike_interface/spike_utils.h"
 #include "spike_interface/atomic.h"
 
+typedef struct pmm_manager_t
+{
+    void *pa;
+    uint64 pages;
+    struct pmm_manager_t *next;
+}pmm_manager;
+
+
 // _end is defined in kernel/kernel.lds, it marks the ending (virtual) address of PKE kernel
 extern char _end[];
 // g_mem_size is defined in spike_interface/spike_memory.c, it indicates the size of our
@@ -34,28 +42,8 @@ static spinlock_t manager_lock;
 
 int vm_alloc_stage[NCPU]={0};
 
-//
-// actually creates the freepage list. each page occupies 4KB (PGSIZE), i.e., small page.
-// PGSIZE is defined in kernel/riscv.h, ROUNDUP is defined in util/functions.h.
-//
-static void create_freepage_list(uint64 start, uint64 end) {
-  
-  uint64 free_page_start=ROUNDUP(start, PGSIZE), free_page_end=ROUNDDOWN(end,PGSIZE);
-
-  pmm_hash_table=(pmm_manager*)free_page_start;
-  memset((void*)pmm_hash_table,0,HASH_TABLE_PAGES*PGSIZE);
-  free_page_start+=(HASH_TABLE_PAGES*PGSIZE);
-
-  free_manager_list.next=NULL;
-  add_free_managers((void*)free_page_start);
-  free_page_start+=PGSIZE;
-
-  g_free_mem_list.next = (list_node*)free_page_start;
-  g_free_mem_list.next->pages=(free_page_end-free_page_start)/PGSIZE;
-
-
-  // for (uint64 p = ROUNDUP(start, PGSIZE); p + PGSIZE < end; p += PGSIZE)
-  //   free_page( (void *)p );
+uint64 pmm_hash(void*pa){
+  return (((uint64)pa)>>PGSHIFT)%(HASH_TABLE_PAGES*PGSIZE/sizeof(pmm_manager));
 }
 
 static void *__alloc_p(uint64 pages){
@@ -84,6 +72,65 @@ static void *__alloc_p(uint64 pages){
 
   spinlock_unlock(&g_free_mem_list_lock);
   return (void*)p;
+}
+
+void add_free_managers(void *pa){
+  if(free_manager_list.next)panic("Needn't add free managers!\n");
+  pmm_manager *p=(pmm_manager*)ROUNDDOWN((uint64)pa,PGSIZE);
+  for(int i=0;i<PGSIZE/sizeof(pmm_manager);i++,p++){
+    p->next=free_manager_list.next;
+    free_manager_list.next=p;
+  }
+}
+
+void pmm_hash_put(void*pa,uint64 pages){
+  spinlock_lock(&manager_lock);
+  if(!free_manager_list.next){
+    add_free_managers(__alloc_p(1));
+  }
+  pmm_manager *p=free_manager_list.next;
+  free_manager_list.next=p->next;
+  p->pa=pa;
+  p->pages=pages;
+
+  uint64 hash_index=pmm_hash(pa);
+  p->next=pmm_hash_table[hash_index].next;
+  pmm_hash_table[hash_index].next=p;
+
+  spinlock_unlock(&manager_lock);
+}
+
+//
+// actually creates the freepage list. each page occupies 4KB (PGSIZE), i.e., small page.
+// PGSIZE is defined in kernel/riscv.h, ROUNDUP is defined in util/functions.h.
+//
+static void create_freepage_list(uint64 start, uint64 end) {
+  
+  uint64 free_page_start=ROUNDUP(start, PGSIZE), free_page_end=ROUNDDOWN(end,PGSIZE);
+
+  pmm_hash_table=(pmm_manager*)free_page_start;
+  memset((void*)pmm_hash_table,0,HASH_TABLE_PAGES*PGSIZE);
+  free_page_start+=(HASH_TABLE_PAGES*PGSIZE);
+
+  free_manager_list.next=NULL;
+  add_free_managers((void*)free_page_start);
+  free_page_start+=PGSIZE;
+
+  g_free_mem_list.next = (list_node*)free_page_start;
+  g_free_mem_list.next->pages=(free_page_end-free_page_start)/PGSIZE;
+
+
+  // for (uint64 p = ROUNDUP(start, PGSIZE); p + PGSIZE < end; p += PGSIZE)
+  //   free_page( (void *)p );
+}
+
+pmm_manager *pmm_hash_get(void*pa){
+  pmm_manager *p;
+  spinlock_lock(&manager_lock);
+  for(p=pmm_hash_table[pmm_hash(pa)].next;p;p=p->next)
+    if(p->pa==pa)break;
+  spinlock_unlock(&manager_lock);
+  return p;
 }
 
 //
@@ -141,7 +188,6 @@ void *alloc_page(void) {
 
 void *alloc_pages(uint64 pages) {
   void *p=__alloc_p(pages);
-
   if(!p)return NULL;
 
   pmm_hash_put(p,pages);
@@ -211,45 +257,6 @@ void pmm_init() {
   sprint("kernel memory manager is initializing ...\n");
   // create the list of free pages
   create_freepage_list(free_mem_start_addr, free_mem_end_addr);
-}
-
-uint64 pmm_hash(void*pa){
-  return (((uint64)pa)<<PGSHIFT)%(HASH_TABLE_PAGES*PGSIZE/sizeof(pmm_manager));
-}
-
-void pmm_hash_put(void*pa,uint64 pages){
-  spinlock_lock(&manager_lock);
-  if(!free_manager_list.next){
-    add_free_managers(__alloc_p(1));
-  }
-  pmm_manager *p=free_manager_list.next;
-  free_manager_list.next=p->next;
-  p->pa=pa;
-  p->pages=pages;
-
-  uint64 hash_index=pmm_hash(pa);
-  p->next=pmm_hash_table[hash_index].next;
-  pmm_hash_table[hash_index].next=p;
-
-  spinlock_unlock(&manager_lock);
-}
-
-void add_free_managers(void *pa){
-  if(free_manager_list.next)panic("Needn't add free managers!\n");
-  pmm_manager *p=(pmm_manager*)ROUNDDOWN((uint64)pa,PGSIZE);
-  for(int i=0;i<PGSIZE/sizeof(pmm_manager);i++,p++){
-    p->next=free_manager_list.next;
-    free_manager_list.next=p;
-  }
-}
-
-pmm_manager *pmm_hash_get(void*pa){
-  pmm_manager *p;
-  spinlock_lock(&manager_lock);
-  for(p=pmm_hash_table[pmm_hash(pa)].next;p;p=p->next)
-    if(p->pa==pa)break;
-  spinlock_unlock(&manager_lock);
-  return p;
 }
 
 pmm_manager *pmm_hash_erase(pmm_manager* p){

@@ -4,6 +4,8 @@
 #include "riscv.h"
 #include "process.h"
 
+void vm_map_managers_init();
+
 /* --- utility functions for virtual address mapping --- */
 int map_pages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm);
 // permission codes.

@@ -25,10 +25,11 @@ static void *elf_alloc_mb(elf_ctx *ctx, uint64 elf_pa, uint64 elf_va, uint64 siz
   elf_info *msg = (elf_info *)ctx->info;
   // we assume that size of proram segment is smaller than a page.
   // kassert(size < PGSIZE);
-  void *pa = alloc_page((size - 1)/PGSIZE + 1);
+  void *pa = alloc_page();
   if (pa == 0) panic("uvmalloc mem alloc falied\n");
 
   memset((void *)pa, 0, PGSIZE);
+  // sprint("elf_va %p\n",elf_va);
   user_vm_map((pagetable_t)msg->p->pagetable, elf_va, PGSIZE, (uint64)pa,
          prot_to_type(PROT_WRITE | PROT_READ | PROT_EXEC, 1));
 
@@ -57,6 +58,30 @@ elf_status elf_init(elf_ctx *ctx, void *info) {
   if (ctx->ehdr.magic != ELF_MAGIC) return EL_NOTELF;
 
   return EL_OK;
+}
+
+static int64 elf_alloc_mb_and_load(elf_ctx *ctx, elf_prog_header *ph_addr, uint64 perm) {
+  elf_info *msg = (elf_info *)ctx->info;
+  void *pa=NULL;
+  uint64 offset_in_page,pages=0, size_per_page;
+
+  for(uint64 offset=0;offset<ph_addr->memsz;
+    offset=ROUNDUP(ph_addr->vaddr+offset+1,PGSIZE)-ph_addr->vaddr, pages++){
+    if(!(pa=(void*)lookup_pa((pagetable_t)msg->p->pagetable,ph_addr->vaddr+offset))){
+      pa = alloc_page();
+      if (pa == 0) panic("uvmalloc mem alloc falied\n");
+
+      memset((void *)pa, 0, PGSIZE);
+
+      user_vm_map((pagetable_t)msg->p->pagetable, ROUNDDOWN(ph_addr->vaddr+offset,PGSIZE), PGSIZE, (uint64)pa, perm);
+    }
+    offset_in_page=offset%PGSIZE;
+    size_per_page=MIN(PGSIZE-offset_in_page,ph_addr->memsz-offset);
+    if (elf_fpread(ctx, pa+offset_in_page, PGSIZE-offset_in_page, ph_addr->off+offset) != PGSIZE-offset_in_page)
+    return -1;
+  }
+  
+  return pages;
 }
 
 // leb128 (little-endian base 128) is a variable-length
@@ -224,24 +249,28 @@ elf_status elf_load(elf_ctx *ctx) {
     if (ph_addr.vaddr + ph_addr.memsz < ph_addr.vaddr) return EL_ERR;
 
     // allocate memory block before elf loading
-    uint64 page_num=(ph_addr.memsz-1)/PGSIZE+1;
-    void *dest = elf_alloc_mb(ctx, ph_addr.vaddr, ph_addr.vaddr, ph_addr.memsz);
+    int64 page_num=0;
+    // sprint("va %p\n",ph_addr.vaddr);
+    
+    // void *dest = elf_alloc_mb(ctx, ph_addr.vaddr, ph_addr.vaddr, ph_addr.memsz);
 
-    // actual loading
-    if (elf_fpread(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
-      return EL_EIO;
+    // // actual loading
+    // if (elf_fpread(ctx, dest, ph_addr.memsz, ph_addr.off) != ph_addr.memsz)
+    //   return EL_EIO;
 
     // SEGMENT_READABLE, SEGMENT_EXECUTABLE, SEGMENT_WRITABLE are defined in kernel/elf.h
     if( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_EXECUTABLE) ){
+      if((page_num=elf_alloc_mb_and_load(ctx,&ph_addr,prot_to_type(PROT_EXEC|PROT_READ, 1)))<0)return EL_EIO;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].seg_type = CODE_SEGMENT;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].npages = page_num;
-      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].va = ph_addr.vaddr;
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].va = ROUNDDOWN(ph_addr.vaddr,PGSIZE);
 
       sprint( "CODE_SEGMENT added at mapped info offset:%d\n", CODE_SEGMENT );
     }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
+      if((page_num=elf_alloc_mb_and_load(ctx,&ph_addr,prot_to_type(PROT_WRITE|PROT_READ, 1)))<0)return EL_EIO;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].seg_type = DATA_SEGMENT;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].npages = page_num;
-      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].va = ph_addr.vaddr;
+      ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].va = ROUNDDOWN(ph_addr.vaddr,PGSIZE);
 
       sprint( "DATA_SEGMENT added at mapped info offset:%d\n", DATA_SEGMENT );
     }else
@@ -317,17 +346,23 @@ elf_status elf_load_names_of_symbols_and_debugline(elf_ctx *ctx,process *p) {
     }
     else if(!strcmp(temp_sh.sh_name+shstr,".debug_line")){
       found_debugline=TRUE;
-      void *debug_line=alloc_pages(ROUNDUP(temp_sh.sh_size*3,PGSIZE)/PGSIZE);
+      void *debug_line=alloc_pages(ROUNDUP(temp_sh.sh_size*3+8,PGSIZE)/PGSIZE);
+      *(uint64*)debug_line=1;
+      debug_line+=8;
       if(elf_fpread(ctx, debug_line, temp_sh.sh_size, temp_sh.sh_offset) != temp_sh.sh_size) return EL_EIO;
       make_addr_line(ctx, debug_line, temp_sh.sh_size);
     }
     if (found_strtab&&found_symbol&&found_debugline)break;
   }
-  void* symbolstr = alloc_page((strtab_sh.sh_size-1)/PGSIZE+1);
+  void* symbolstr = alloc_page((strtab_sh.sh_size+7)/PGSIZE+1);
+  *(uint64*)symbolstr=1;
+  symbolstr+=8;
   // sprint("%lld\n",strtab_sh.sh_size);
   if(elf_fpread(ctx, symbolstr, strtab_sh.sh_size, strtab_sh.sh_offset) != strtab_sh.sh_size) panic("Error in elf_load_names_of_symbols when read symbols.\n");
   p->symbol_num=symbol_sh.sh_size/sizeof(symbol_table);
-  p->symbols=alloc_pages((p->symbol_num*sizeof(symbol)-1)/PGSIZE+1);
+  p->symbols=alloc_pages((p->symbol_num*sizeof(symbol)+7)/PGSIZE+1);
+  *(uint64*)(p->symbols)=1;
+  p->symbols=(void*)p->symbols+8;
   // sprint("%lf\n",p->symbol_num);
   for(int i=0;i<p->symbol_num;i++){
     if(elf_fpread(ctx, &temp_sym, sizeof(symbol_table), symbol_sh.sh_offset + i *sizeof(symbol_table)) != sizeof(symbol_table)) panic("Error in elf_load_names_of_symbols when read temp_sym.\n");

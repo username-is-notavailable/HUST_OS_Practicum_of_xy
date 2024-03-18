@@ -3,7 +3,7 @@
 
 int main(int argc, char *argv[]) {
   printu("\n======== exec /bin/app_ls in app_exec ========\n");
-  int ret = exec("/bin/app_ls","");
+  int ret = exec("/bin/app_shell","");
   if (ret == -1)
     printu("exec failed!\n");
 

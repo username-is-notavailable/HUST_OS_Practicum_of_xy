@@ -99,11 +99,13 @@ int s_start(void) {
     // init phisical memory manager
     pmm_init();
 
-    // build the kernel page table
-    kern_vm_init();
-
     // init file system, added @lab4_1
     fs_init();
+
+    vm_map_managers_init();
+
+    // build the kernel page table
+    kern_vm_init();
 
     for(int i=0;i<MAX_SEMAPHORES_NUM;i++)sems[i].is_aviliable=TRUE;
   }

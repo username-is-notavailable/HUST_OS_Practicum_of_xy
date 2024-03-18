@@ -194,10 +194,22 @@ int free_process( process* proc ) {
 //
 int do_fork( process* parent)
 {
-
   uint64 tp = read_tp();
   sprint( "will fork a child from parent %d.\n", parent->pid );
   process* child = alloc_process();
+  
+  child->debugline=parent->debugline;
+  (*(((uint64*)child->debugline)-1))++;
+  child->dir=parent->dir;
+  child->file=parent->file;
+  child->line=parent->line;
+  child->line_ind=parent->line_ind;
+  
+  child->symbols=parent->symbols;
+  (*(((uint64*)child->symbols)-1))++;
+
+  child->symbols_names=parent->symbols_names;
+  (*(((uint64*)child->symbols_names)-1))++;
   // sprint("*************************************************\n");
 
   for( int i=0; i<parent->total_mapped_region; i++ ){
@@ -283,6 +295,7 @@ int do_fork( process* parent)
 
   child->trapframe->regs.a0 = 0;
   child->parent = parent;
+  child->waiting_for_child=0;
   // sprint("*************************************************\n");
   insert_to_ready_queue( child );
 
@@ -300,11 +313,11 @@ void reallocate_process(process* p){
   __user_vm_unmap_with_cow(p->pagetable,p->mapped_info[HEAP_SEGMENT].va,p->mapped_info[HEAP_SEGMENT].npages*PGSIZE);
   
   //unmap data sigment if exist
+  sprint("p->total_mapped_region:%d\n",p->total_mapped_region);
   if(DATA_SEGMENT<p->total_mapped_region)__user_vm_unmap_with_cow(p->pagetable,p->mapped_info[DATA_SEGMENT].va,p->mapped_info[DATA_SEGMENT].npages*PGSIZE);
 
   //unmap code segment
   user_vm_unmap(p->pagetable,p->mapped_info[CODE_SEGMENT].va,p->mapped_info[CODE_SEGMENT].npages*PGSIZE,FALSE);
-
   // sprint("Something wrong\n");
 
   // init proc[i]'s vm space
@@ -340,10 +353,9 @@ void reallocate_process(process* p){
   // p->pfiles = init_proc_file_management();
   p->waiting_for_child=0;
 
-  free_page(p->debugline);
-  free_page(p->symbols_names);
-  free_page(p->symbols);
-
+  if(!(--(*(((uint64*)p->debugline)-1))))free_page(((void*)p->debugline)-8);
+  if(!(--(*(((uint64*)p->symbols_names)-1))))free_page(((void*)p->symbols_names)-8);
+  if(!(--(*(((uint64*)p->symbols)-1))))free_page(((void*)p->symbols)-8);
 }
 
 int do_exec(char *command, char *para){
