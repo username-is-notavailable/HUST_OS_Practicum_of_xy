@@ -94,7 +94,7 @@ page_map_mananger *page_map_hash_erase(page_map_mananger* p){
 uint64 map_manager_count_increase(page_map_mananger *m){
   spinlock_lock(&map_manager_lock);
   uint64 r=(++m->map_count);
-  sprint("%d>>>increase: pa:%p count:%d\n",read_tp(),m->pa,m->map_count);
+  // sprint("%d>>>increase: pa:%p count:%d\n",read_tp(),m->pa,m->map_count);
   spinlock_unlock(&map_manager_lock);
   return r;
 }
@@ -102,7 +102,7 @@ uint64 map_manager_count_increase(page_map_mananger *m){
 uint64 map_manager_count_decrease(page_map_mananger *m){
   spinlock_lock(&map_manager_lock);
   uint64 r=(--m->map_count);
-  sprint("%d>>>decrease :pa:%p count:%d\n",read_tp(),m->pa,m->map_count);
+  // sprint("%d>>>decrease :pa:%p count:%d\n",read_tp(),m->pa,m->map_count);
   spinlock_unlock(&map_manager_lock);
   return r;
 }

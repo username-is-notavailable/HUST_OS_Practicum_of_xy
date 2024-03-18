@@ -77,7 +77,7 @@ static int64 elf_alloc_mb_and_load(elf_ctx *ctx, elf_prog_header *ph_addr, uint6
     }
     offset_in_page=offset%PGSIZE;
     size_per_page=MIN(PGSIZE-offset_in_page,ph_addr->memsz-offset);
-    if (elf_fpread(ctx, pa+offset_in_page, PGSIZE-offset_in_page, ph_addr->off+offset) != PGSIZE-offset_in_page)
+    if (elf_fpread(ctx, pa+offset_in_page, size_per_page, ph_addr->off+offset) != size_per_page)
     return -1;
   }
   

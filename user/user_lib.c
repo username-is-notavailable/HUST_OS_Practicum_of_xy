@@ -193,12 +193,12 @@ int print_backtrace(int depth) {
   return do_user_call(SYS_user_backtrace, depth, 0, 0, 0, 0, 0, 0);
 }
 
-static mem_node free_mem_list={sizeof(mem_node),0};
+static mem_node free_mem_list;
 
 void* better_malloc(uint64 size){
   // printu("%d\n",*(uint64*)(0x0000000000011be8));
   mem_node *pre,*p,*temp;
-  // printu("%p %p %p %p\n",&pre,&p,&temp,&free_mem_list);
+  printu("%p %p\n",&free_mem_list,free_mem_list.next);
   
   // uint64 ttt=(uint64)pre;
   // printu("%p\n",pre);
@@ -206,6 +206,7 @@ void* better_malloc(uint64 size){
   uint64 offset=ROUNDUP(sizeof(mem_node),sizeof(int64));
   size=ROUNDUP(offset + size, sizeof(int64));
   for(pre=&free_mem_list,p=pre->next;p;pre=p,p=p->next){
+    printu("%p\n",p);
     if(p->size>=size)break;
   }
   // printu("p:%p\n",p);

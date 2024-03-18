@@ -11,7 +11,6 @@
 typedef struct mem_node_t
 {
     uint64 size;
-    void *neighbor;
     void *next;
 }mem_node;
 
