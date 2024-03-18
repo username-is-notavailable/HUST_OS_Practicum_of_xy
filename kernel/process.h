@@ -147,7 +147,9 @@ int do_fork(process* parent);
 
 int do_exec(char *command, char *para);
 
-uint64 do_wait(uint64 pid);
+uint64 do_wait(int64 pid);
+
+int do_sys_reclaim_subprocess(int pid);
 
 // current running process
 extern process* current[NCPU];

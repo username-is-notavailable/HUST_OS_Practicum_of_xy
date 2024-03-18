@@ -145,7 +145,7 @@ process* alloc_process() {
   procs[tp][i].mapped_info[SYSTEM_SEGMENT].npages = 1;
   procs[tp][i].mapped_info[SYSTEM_SEGMENT].seg_type = SYSTEM_SEGMENT;
 
-  sprint("in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",
+  sprint("%d>>>in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",read_tp(),
     procs[tp][i].trapframe, procs[tp][i].trapframe->regs.sp, procs[tp][i].kstack);
 
   // initialize the process's heap manager
@@ -162,7 +162,7 @@ process* alloc_process() {
 
   // initialize files_struct
   procs[tp][i].pfiles = init_proc_file_management();
-  sprint("in alloc_proc. build proc_file_management successfully.\n");
+  sprint("%d>>>in alloc_proc. build proc_file_management successfully.\n",read_tp());
 
   // return after initialization.
   procs[tp][i].waiting_for_child=0;
@@ -178,7 +178,7 @@ int free_process( process* proc ) {
   // since proc can be current process, and its user kernel stack is currently in use!
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
-  if(proc->parent&&proc->parent->waiting_for_child==proc->pid)insert_to_ready_queue(proc->parent);
+  if(proc->parent&&(proc->parent->waiting_for_child==proc->pid||proc->parent->waiting_for_child==-1))insert_to_ready_queue(proc->parent);
 
   proc->status = ZOMBIE;
 
@@ -194,9 +194,9 @@ int free_process( process* proc ) {
 //
 int do_fork( process* parent)
 {
-  sprint("DATA: va %p npages %d\n",parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
+  sprint("%d>>>DATA: va %p npages %d\n",read_tp(),parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
   uint64 tp = read_tp();
-  sprint( "will fork a child from parent %d.\n", parent->pid );
+  sprint( "%d>>>will fork a child from parent %d.\n", read_tp(),parent->pid );
   process* child = alloc_process();
   
   child->debugline=parent->debugline;
@@ -278,7 +278,7 @@ int do_fork( process* parent)
         //panic( "You need to implement the code segment mapping of child in lab3_1.\n" );
         user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[CODE_SEGMENT].va, PGSIZE*parent->mapped_info[CODE_SEGMENT].npages, lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),
                       prot_to_type(PROT_EXEC | PROT_READ, 1));
-        sprint("do_fork map code segment at pa:%lx of parent to child at va:%lx.\n",lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),parent->mapped_info[CODE_SEGMENT].va);
+        sprint("%d>>>do_fork map code segment at pa:%lx of parent to child at va:%lx.\n",read_tp(),lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),parent->mapped_info[CODE_SEGMENT].va);
         // after mapping, register the vm region (do not delete codes below!)
         child->mapped_info[child->total_mapped_region].va = parent->mapped_info[CODE_SEGMENT].va;
         child->mapped_info[child->total_mapped_region].npages =
@@ -287,7 +287,7 @@ int do_fork( process* parent)
         child->total_mapped_region++;
         break;
       case DATA_SEGMENT:
-        sprint("DATA: va %p npages %d\n",parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
+        sprint("%d>>>DATA: va %p npages %d\n",read_tp(),parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
 
         user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[DATA_SEGMENT].va, PGSIZE*parent->mapped_info[DATA_SEGMENT].npages, 
                       lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va),
@@ -297,7 +297,7 @@ int do_fork( process* parent)
           *pte|=PTE_COW;
           *pte&=(~PTE_W);
         }
-        sprint("do_fork map data segment at pa:%lx of parent to child at va:%lx.\n",lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va),parent->mapped_info[DATA_SEGMENT].va);
+        sprint("%d>>>do_fork map data segment at pa:%lx of parent to child at va:%lx.\n",read_tp(),lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va),parent->mapped_info[DATA_SEGMENT].va);
         // after mapping, register the vm region (do not delete codes below!)
         child->mapped_info[DATA_SEGMENT].va = parent->mapped_info[DATA_SEGMENT].va;
         child->mapped_info[DATA_SEGMENT].npages =
@@ -327,7 +327,7 @@ void reallocate_process(process* p){
   __user_vm_unmap_with_cow(p->pagetable,p->mapped_info[HEAP_SEGMENT].va,p->mapped_info[HEAP_SEGMENT].npages*PGSIZE);
   
   //unmap data sigment if exist
-  sprint("p->total_mapped_region:%d\n",p->total_mapped_region);
+  // sprint("%d>>>p->total_mapped_region:%d\n",read_tp(),p->total_mapped_region);
   if(DATA_SEGMENT<p->total_mapped_region)__user_vm_unmap_with_cow(p->pagetable,p->mapped_info[DATA_SEGMENT].va,p->mapped_info[DATA_SEGMENT].npages*PGSIZE);
 
   //unmap code segment
@@ -336,6 +336,8 @@ void reallocate_process(process* p){
 
   // init proc[i]'s vm space
   memset(p->trapframe, 0, sizeof(trapframe));
+
+  p->trapframe->regs.tp=read_tp();
 
   p->kstack = ROUNDDOWN(p->kstack, PGSIZE);   //user kernel stack top
   uint64 user_stack = (uint64)alloc_page();       //phisical address of user stack bottom
@@ -402,10 +404,49 @@ int do_exec(char *command, char *para){
 
 uint64 do_wait(int64 pid){
   uint64 tp = read_tp();
-  if(procs[tp][pid].status==FREE||procs[tp][pid].parent!=current[tp])return -1;
-  if(procs[tp][pid].status==ZOMBIE)return 0;
+  if(pid>0){
+    if(procs[tp][pid].status==FREE||procs[tp][pid].parent!=current[tp])return -1;
+    if(procs[tp][pid].status==ZOMBIE)return pid;
+  }
   current[tp]->waiting_for_child=pid;
   current[tp]->status=BLOCKED;
   schedule();
   return 0;
+}
+
+int do_sys_reclaim_subprocess(int pid){
+  uint64 tp=read_tp();
+  process *p=&procs[tp][pid];
+
+  if(p->parent!=current[tp])return -1;
+
+  if(!(--(*(((uint64*)p->debugline)-1))))free_page(((void*)p->debugline)-8);
+  if(!(--(*(((uint64*)p->symbols_names)-1))))free_page(((void*)p->symbols_names)-8);
+  if(!(--(*(((uint64*)p->symbols)-1))))free_page(((void*)p->symbols)-8);
+
+  free_page((void*)ROUNDDOWN(p->kstack,PGSIZE));
+
+  free_page(p->pfiles);
+
+  //unmap stack
+  user_vm_unmap(p->pagetable,p->mapped_info[STACK_SEGMENT].va,p->mapped_info[STACK_SEGMENT].npages*PGSIZE,TRY);
+  
+  //unmap heap 
+  __user_vm_unmap_with_cow(p->pagetable,p->mapped_info[HEAP_SEGMENT].va,p->mapped_info[HEAP_SEGMENT].npages*PGSIZE);
+  
+  //unmap data sigment if exist
+  // sprint("p->total_mapped_region:%d\n",p->total_mapped_region);
+  if(DATA_SEGMENT<p->total_mapped_region)__user_vm_unmap_with_cow(p->pagetable,p->mapped_info[DATA_SEGMENT].va,p->mapped_info[DATA_SEGMENT].npages*PGSIZE);
+
+  //unmap code segment
+  user_vm_unmap(p->pagetable,p->mapped_info[CODE_SEGMENT].va,p->mapped_info[CODE_SEGMENT].npages*PGSIZE,TRY);
+  // sprint("Something wrong\n");
+
+  user_vm_unmap(p->pagetable,p->mapped_info[CONTEXT_SEGMENT].va,p->mapped_info[CONTEXT_SEGMENT].npages*PGSIZE,TRY);
+
+  free_page(p->mapped_info);
+
+  free_page(p->pagetable);
+
+  return pid;
 }

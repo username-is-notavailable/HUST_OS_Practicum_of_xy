@@ -181,7 +181,9 @@ int exec(char *command, char *para) {
 // lib call to wait
 //
 int wait(int pid) {
-  return do_user_call(SYS_user_wait, pid, 0, 0, 0, 0, 0, 0);
+  int r = do_user_call(SYS_user_wait, pid, 0, 0, 0, 0, 0, 0);
+  // printu("gethere\n");
+  return do_user_call(SYS_reclaim_subprocess,r,0,0,0,0,0,0);
 }
 
 //

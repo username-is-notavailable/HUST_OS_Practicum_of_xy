@@ -70,7 +70,7 @@ process* load_user_program() {
   process* proc;
 
   proc = alloc_process();
-  sprint("User application is loading.\n");
+  sprint("%d>>>User application is loading.\n",read_tp());
 
   arg_buf arg_bug_msg;
 
@@ -115,14 +115,14 @@ int s_start(void) {
   // now, switch to paging mode by turning on paging (SV39)
   enable_paging();
   // the code now formally works in paging mode, meaning the page table is now in use.
-  sprint("kernel page table is on \n");
+  sprint("%d>>>kernel page table is on \n",read_tp());
 
   // added @lab3_1
   init_proc_pool();
 
   vm_alloc_stage[tp]=1;
 
-  sprint("Switch to user mode...\n");
+  sprint("%d>>>Switch to user mode...\n",read_tp());
   // the application code (elf) is first loaded into memory, and then put into execution
   // added @lab3_1
   insert_to_ready_queue( load_user_program() );

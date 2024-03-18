@@ -149,6 +149,8 @@ void free_page(void *pa) {
   pmm_manager *p=pmm_hash_get(pa);
   if(!p)panic("free_page 0x%lx \n", pa);
 
+  sprint("%d>>>free_page 0x%lx \n",read_tp(), pa);
+
   spinlock_lock(&g_free_mem_list_lock);
 
   // sprint("free");
@@ -239,7 +241,7 @@ void pmm_init() {
   uint64 g_kernel_end = (uint64)&_end;
 
   uint64 pke_kernel_size = g_kernel_end - g_kernel_start;
-  sprint("PKE kernel start 0x%lx, PKE kernel end: 0x%lx, PKE kernel size: 0x%lx .\n",
+  sprint("%d>>>PKE kernel start 0x%lx, PKE kernel end: 0x%lx, PKE kernel size: 0x%lx .\n",read_tp(),
     g_kernel_start, g_kernel_end, pke_kernel_size);
 
   // free memory starts from the end of PKE kernel and must be page-aligined
@@ -252,10 +254,10 @@ void pmm_init() {
     panic( "Error when recomputing physical memory size (g_mem_size).\n" );
 
   free_mem_end_addr = g_mem_size + DRAM_BASE;
-  sprint("free physical memory address: [0x%lx, 0x%lx] \n", free_mem_start_addr,
+  sprint("%d>>>free physical memory address: [0x%lx, 0x%lx] \n",read_tp() ,free_mem_start_addr,
     free_mem_end_addr - 1);
 
-  sprint("kernel memory manager is initializing ...\n");
+  sprint("%d>>>kernel memory manager is initializing ...\n",read_tp());
   // create the list of free pages
   create_freepage_list(free_mem_start_addr, free_mem_end_addr);
 }

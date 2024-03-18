@@ -53,7 +53,7 @@ void handle_mtimer_trap() {
 // stval: the virtual address that causes pagefault when being accessed.
 //
 void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
-  sprint("handle_page_fault: %lx\n", stval);
+  sprint("%d>>>handle_page_fault: %lx\n",read_tp(), stval);
   switch (mcause) {
     case CAUSE_STORE_PAGE_FAULT:
       // TODO (lab2_3): implement the operations that solve the page fault to
@@ -79,6 +79,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
         }
         user_vm_unmap(current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE),PGSIZE,NO_FREE);
         // sprint("unmap\n");
+        sprint("%d>>>page_pa:%p\n",tp,page_pa);
         user_vm_map((pagetable_t)current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)page_pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
       }
@@ -155,7 +156,7 @@ void smode_trap_handler(void) {
       handle_user_page_fault(cause, read_csr(sepc), read_csr(stval));
       break;
     default:
-      sprint("smode_trap_handler(): unexpected scause %p\n", read_csr(scause));
+      sprint("hartid=%d smode_trap_handler(): unexpected scause %p\n", read_tp(), read_csr(scause));
       sprint("            sepc=%p stval=%p\n", read_csr(sepc), read_csr(stval));
       panic( "unexpected exception happened.\n" );
       break;

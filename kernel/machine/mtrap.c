@@ -63,7 +63,7 @@ static void handle_misaligned_store() { panic("Misaligned AMO!"); }
 
 // added @lab1_3
 static void handle_timer() {
-  int cpuid = 0;
+  int cpuid = read_tp();
   // setup the timer fired at next time (TIMER_INTERVAL from now)
   *(uint64*)CLINT_MTIMECMP(cpuid) = *(uint64*)CLINT_MTIMECMP(cpuid) + TIMER_INTERVAL;
 
@@ -81,13 +81,16 @@ void handle_mtrap() {
       handle_timer();
       break;
     case CAUSE_FETCH_ACCESS:
+      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_instruction_access_fault();
       break;
     case CAUSE_LOAD_ACCESS:
+      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_load_access_fault();
     case CAUSE_STORE_ACCESS:
+      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_store_access_fault();
       break;
@@ -95,20 +98,24 @@ void handle_mtrap() {
       // TODO (lab1_2): call handle_illegal_instruction to implement illegal instruction
       // interception, and finish lab1_2.
       //panic( "call handle_illegal_instruction to accomplish illegal instruction interception for lab1_2.\n" );
+      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_illegal_instruction();
 
       break;
     case CAUSE_MISALIGNED_LOAD:
+      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_misaligned_load();
       break;
     case CAUSE_MISALIGNED_STORE:
+      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_misaligned_store();
       break;
 
     default:
+      sprint("%d>>>",read_tp());
       sprint("machine trap(): unexpected mscause %p\n", mcause);
       sprint("            mepc=%p mtval=%p\n", read_csr(mepc), read_csr(mtval));
       panic( "unexpected exception happened in M-mode.\n" );

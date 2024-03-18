@@ -94,7 +94,7 @@ page_map_mananger *page_map_hash_erase(page_map_mananger* p){
 uint64 map_manager_count_increase(page_map_mananger *m){
   spinlock_lock(&map_manager_lock);
   uint64 r=(++m->map_count);
-  // sprint("increase: pa:%p count:%d\n",m->pa,m->map_count);
+  sprint("%d>>>increase: pa:%p count:%d\n",read_tp(),m->pa,m->map_count);
   spinlock_unlock(&map_manager_lock);
   return r;
 }
@@ -102,7 +102,7 @@ uint64 map_manager_count_increase(page_map_mananger *m){
 uint64 map_manager_count_decrease(page_map_mananger *m){
   spinlock_lock(&map_manager_lock);
   uint64 r=(--m->map_count);
-  // sprint("decrease :pa:%p count:%d\n",m,m->map_count);
+  sprint("%d>>>decrease :pa:%p count:%d\n",read_tp(),m->pa,m->map_count);
   spinlock_unlock(&map_manager_lock);
   return r;
 }
@@ -327,7 +327,7 @@ void __user_vm_unmap_with_cow(pagetable_t page_dir, uint64 va, uint64 size) {
     pte_t *pte=page_walk(page_dir, first, 1);
     if (pte == NULL) continue;
     // sprint("do unmap\n");
-    user_vm_unmap(page_dir,va,PGSIZE,!(*pte & PTE_COW));
+    user_vm_unmap(page_dir,va,PGSIZE,TRY);
   }
 }
 

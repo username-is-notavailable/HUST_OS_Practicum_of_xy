@@ -42,8 +42,10 @@ int main(int argc, char *argv[]) {
     strcpy(command, token);
     token = strtok(NULL, delim);
     strcpy(para, token);
-    if(strcmp(command, "END") == 0 && strcmp(para, "END") == 0)
+    if(strcmp(command, "END") == 0 && strcmp(para, "END") == 0){
+      printu("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
       break;
+    }
     printu("Next command: %s %s\n\n", command, para);
     printu("==========Command Start============\n\n");
     int pid = fork();

@@ -29,7 +29,7 @@ ssize_t sys_user_print(const char* buf, size_t n) {
   uint64 tp=read_tp();
   assert( current[tp] );
   char* pa = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)buf);
-  sprint(pa);
+  sprint("%d>>>%s",tp,pa);
   return 0;
 }
 
@@ -37,7 +37,7 @@ ssize_t sys_user_print(const char* buf, size_t n) {
 // implement the SYS_user_exit syscall
 //
 ssize_t sys_user_exit(uint64 code) {
-  sprint("User exit with code:%d.\n", code);
+  sprint("%d>>>User pid:%d exit with code:%d.\n",read_tp(), current[read_tp()]->pid, code);
   // reclaim the current process, and reschedule. added @lab3_1
   free_process( current[read_tp()] );
   
@@ -84,7 +84,7 @@ uint64 sys_user_free_page(uint64 va) {
 // kerenl entry point of naive_fork
 //
 ssize_t sys_user_fork() {
-  sprint("User call fork.\n");
+  sprint("%d>>>User call fork.\n",read_tp());
   return do_fork( current[read_tp()] );
 }
 
@@ -236,7 +236,7 @@ ssize_t sys_user_exec(char * command, char *para){
 //
 // lib call to wait
 //
-ssize_t sys_user_wait(uint64 pid){
+ssize_t sys_user_wait(int64 pid){
   return do_wait(pid);
 }
 
@@ -360,7 +360,9 @@ ssize_t sys_user_ccwd(char *path) {
   return 0;
 }
 
-
+int sys_reclaim_subprocess(int pid){
+  return do_sys_reclaim_subprocess(pid);
+}
 
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
@@ -428,6 +430,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_rcwd((char*)a1);
     case SYS_user_ccwd:
       return sys_user_ccwd((char*)a1);
+    case SYS_reclaim_subprocess:
+      return sys_reclaim_subprocess(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }
