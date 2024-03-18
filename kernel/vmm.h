@@ -17,6 +17,12 @@ enum VMPermision {
   PROT_COW = 8,
 };
 
+enum FreeWhenUnmapPatten{
+  NO_FREE=0,
+  TRY,
+  ENFORCE,
+};
+
 uint64 prot_to_type(int prot, int user);
 pte_t *page_walk(pagetable_t pagetable, uint64 va, int alloc);
 uint64 lookup_pa(pagetable_t pagetable, uint64 va);
@@ -36,5 +42,6 @@ void user_vm_map(pagetable_t page_dir, uint64 va, uint64 size, uint64 pa, int pe
 void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free);
 void __user_vm_unmap_with_cow(pagetable_t page_dir, uint64 va, uint64 size);
 void print_proc_vmspace(process* proc);
+uint64 map_manager_count(void *pa);
 
 #endif

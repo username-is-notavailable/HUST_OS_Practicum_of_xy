@@ -272,7 +272,7 @@ elf_status elf_load(elf_ctx *ctx) {
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].npages = page_num;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].va = ROUNDDOWN(ph_addr.vaddr,PGSIZE);
 
-      sprint( "DATA_SEGMENT added at mapped info offset:%d\n", DATA_SEGMENT );
+      sprint( "DATA_SEGMENT added at mapped info offset:%d va:%p npages:%d\n", DATA_SEGMENT , ROUNDDOWN(ph_addr.vaddr,PGSIZE), page_num);
     }else
       panic( "unknown program segment encountered, segment flag:%d.\n", ph_addr.flags );
 

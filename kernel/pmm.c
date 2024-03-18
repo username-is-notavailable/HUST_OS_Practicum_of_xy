@@ -71,6 +71,7 @@ static void *__alloc_p(uint64 pages){
   pre->next=p->next;
 
   spinlock_unlock(&g_free_mem_list_lock);
+  // sprint("alloc_page: %p\n", p);
   return (void*)p;
 }
 

@@ -64,17 +64,22 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       uint64 tp=read_tp();
       pte_t *pte = page_walk(current[tp]->pagetable, stval, FALSE);
       if(pte&&(*pte)&PTE_COW){
-        void* pa=alloc_page();
         uint64 page_pa=lookup_pa(current[tp]->pagetable,stval);
-        // sprint("%x\n",page_pa);
-        if(!page_pa){
-          sprint("Error when COW\n");
-          return ;
+        // sprint("%p\n",page_pa);
+        if(map_manager_count((void*)page_pa)>1){
+          uint64 pa=(uint64)alloc_page();
+        
+          // sprint("%x\n",page_pa);
+          if(!page_pa){
+            sprint("Error when COW\n");
+            return ;
+          }
+          memcpy((void*)pa,(void*)page_pa,PGSIZE);
+          page_pa=pa;
         }
-        memcpy(pa,(void*)page_pa,PGSIZE);
+        user_vm_unmap(current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE),PGSIZE,NO_FREE);
         // sprint("unmap\n");
-        user_vm_unmap(current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE),PGSIZE,FALSE);
-        user_vm_map((pagetable_t)current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)pa,
+        user_vm_map((pagetable_t)current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)page_pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
       }
       else if(stval < current[tp]->trapframe->regs.sp - PGSIZE*20) panic("this address is not available!");
