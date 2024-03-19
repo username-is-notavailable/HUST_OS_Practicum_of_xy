@@ -31,6 +31,8 @@ extern char trap_sec_start[];
 // process pool. added @lab3_1
 process procs[NCPU][NPROC];
 
+spinlock_t procs_status_lock=SPINLOCK_INIT;
+
 // current points to the currently running user-mode application.
 process* current[NCPU];
 
@@ -96,12 +98,14 @@ process* alloc_process() {
   // locate the first usable process structure
   int i;
   uint64 tp=read_tp();
+  spinlock_lock(&procs_status_lock);
   for( i=0; i<NPROC; i++ ){
     if( procs[tp][i].status == FREE ) {
       procs[tp][i].status=UNAVAILABLE;
       break;
     }
   }
+  spinlock_unlock(&procs_status_lock);
   if( i>=NPROC ){
     panic( "cannot find any free process structure.\n" );
     return 0;
@@ -167,6 +171,7 @@ process* alloc_process() {
   // return after initialization.
   procs[tp][i].waiting_for_child=0;
   procs[tp][i].trapframe->regs.tp=read_tp();
+  procs[tp][i].children=procs[tp][i].sibling=procs[tp][i].zombie_children=NULL;
   return &procs[tp][i];
 }
 
@@ -178,10 +183,16 @@ int free_process( process* proc ) {
   // since proc can be current process, and its user kernel stack is currently in use!
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
-  if(proc->parent&&(proc->parent->waiting_for_child==proc->pid||proc->parent->waiting_for_child==-1))insert_to_ready_queue(proc->parent);
-
+  process *parent = proc->parent;
   proc->status = ZOMBIE;
-
+  if(parent){
+    proc->queue_next=parent->zombie_children;
+    parent->zombie_children=proc;
+    if((proc->parent->waiting_for_child==proc->pid||proc->parent->waiting_for_child==-1)){
+      parent->trapframe->regs.a0=proc->pid;
+      insert_to_ready_queue(proc->parent);
+    }
+  }
   return 0;
 }
 
@@ -199,18 +210,6 @@ int do_fork( process* parent)
   sprint( "%d>>>will fork a child from parent %d.\n", read_tp(),parent->pid );
   process* child = alloc_process();
   
-  child->debugline=parent->debugline;
-  (*(((uint64*)child->debugline)-1))++;
-  child->dir=parent->dir;
-  child->file=parent->file;
-  child->line=parent->line;
-  child->line_ind=parent->line_ind;
-  
-  child->symbols=parent->symbols;
-  (*(((uint64*)child->symbols)-1))++;
-
-  child->symbols_names=parent->symbols_names;
-  (*(((uint64*)child->symbols_names)-1))++;
   // sprint("*************************************************\n");
 
   for( int i=0; i<parent->total_mapped_region; i++ ){
@@ -309,8 +308,24 @@ int do_fork( process* parent)
 
   child->trapframe->regs.a0 = 0;
   child->parent = parent;
+  child->sibling=parent->children;
+  parent->children=child;
+  
   child->waiting_for_child=0;
   // sprint("*************************************************\n");
+  child->debugline=parent->debugline;
+  (*(((uint64*)child->debugline)-1))++;
+  child->dir=parent->dir;
+  child->file=parent->file;
+  child->line=parent->line;
+  child->line_ind=parent->line_ind;
+  
+  child->symbols=parent->symbols;
+  (*(((uint64*)child->symbols)-1))++;
+
+  child->symbols_names=parent->symbols_names;
+  (*(((uint64*)child->symbols_names)-1))++;
+
   insert_to_ready_queue( child );
 
   return child->pid;
@@ -404,10 +419,12 @@ int do_exec(char *command, char *para){
 
 uint64 do_wait(int64 pid){
   uint64 tp = read_tp();
+  process *child=&procs[tp][pid];
   if(pid>0){
-    if(procs[tp][pid].status==FREE||procs[tp][pid].parent!=current[tp])return -1;
-    if(procs[tp][pid].status==ZOMBIE)return pid;
+    if(child->status==FREE||child->parent!=current[tp])return -1;
+    if(child->status==ZOMBIE)return pid;
   }
+  else if(current[tp]->zombie_children)return current[tp]->zombie_children->pid;
   current[tp]->waiting_for_child=pid;
   current[tp]->status=BLOCKED;
   schedule();
@@ -415,10 +432,14 @@ uint64 do_wait(int64 pid){
 }
 
 int do_sys_reclaim_subprocess(int pid){
+  kassert(pid>0);
   uint64 tp=read_tp();
+  
   process *p=&procs[tp][pid];
+  kassert(p->status==ZOMBIE);
+  kassert(p->parent==current[tp]);
 
-  if(p->parent!=current[tp])return -1;
+  p->parent->zombie_children=p->queue_next;
 
   if(!(--(*(((uint64*)p->debugline)-1))))free_page(((void*)p->debugline)-8);
   if(!(--(*(((uint64*)p->symbols_names)-1))))free_page(((void*)p->symbols_names)-8);
@@ -447,6 +468,10 @@ int do_sys_reclaim_subprocess(int pid){
   free_page(p->mapped_info);
 
   free_page(p->pagetable);
+
+  spinlock_lock(&procs_status_lock);
+  p->status=FREE;
+  spinlock_unlock(&procs_status_lock);
 
   return pid;
 }

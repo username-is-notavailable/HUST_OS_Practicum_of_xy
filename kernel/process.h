@@ -125,6 +125,13 @@ typedef struct process_t {
   char *debugline; 
   
   char **dir; code_file *file; addr_line *line; int line_ind;
+
+  struct process_t *children;
+
+  struct process_t *sibling;
+
+  struct process_t *zombie_children;
+  
 }process;
 
 typedef struct semaphores_t{
