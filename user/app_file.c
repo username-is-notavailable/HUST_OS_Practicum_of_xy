@@ -9,6 +9,16 @@ int main(int argc, char *argv[]) {
   char str[] = "hello world";
   int fd1, fd2;
 
+  printu("\n======== Test 0: create host file  ========\n");
+  printu("create: /hostfile.txt\n");
+
+  fd = open("/hostfile.txt", O_RDWR | O_CREAT);
+  printu("file descriptor fd: %d\n", fd);
+
+  write_u(fd, "Hello world!\n", 14);
+
+  close(fd);
+
   printu("\n======== Test 1: read host file  ========\n");
   printu("read: /hostfile.txt\n");
 
@@ -48,6 +58,7 @@ int main(int argc, char *argv[]) {
   printu("file descriptor fd1(ramfile): %d\n", fd1);
   printu("file descriptor fd2(ramfile): %d\n", fd2);
 
+  write_u(fd1, str, strlen(str));
   write_u(fd1, str, strlen(str));
   printu("write content: \n%s\n", str);
 

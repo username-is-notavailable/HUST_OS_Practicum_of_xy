@@ -158,6 +158,8 @@ uint64 do_wait(int64 pid);
 
 int do_sys_reclaim_subprocess(int pid);
 
+int register_init_process();
+
 // current running process
 extern process* current[NCPU];
 

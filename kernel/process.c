@@ -38,6 +38,13 @@ process* current[NCPU];
 
 semaphores sems[MAX_SEMAPHORES_NUM];
 
+process* init_pid[NCPU];
+
+int register_init_process(){
+  init_pid[read_tp()]=current[read_tp()];
+  return current[read_tp()]->pid;
+}
+
 //
 // switch to a user-mode process
 //

@@ -57,5 +57,9 @@ void sem_V(int num);
 
 int read_cwd(char *path);
 int change_cwd(const char *path);
+void register_init();
+char getch();
+
+bool __shoutnow();
 
 #endif

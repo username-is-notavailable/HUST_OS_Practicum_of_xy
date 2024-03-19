@@ -25,6 +25,7 @@ extern char trap_sec_start[];
 
 static int s_start_barrier=0;
 
+bool __shutdown[NCPU];
 //
 // turn on paging. added @lab2_1
 //
@@ -86,7 +87,9 @@ process* load_user_program() {
 // s_start: S-mode entry point of riscv-pke OS kernel.
 //
 int s_start(void) {
+
   uint64 tp=read_tp();
+  __shutdown[tp]=FALSE;
 
   sprint("hartid = %d: Enter supervisor mode...\n",tp);
   // sprint("Enter supervisor mode...\n");

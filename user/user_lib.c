@@ -293,3 +293,15 @@ int read_cwd(char *path) {
 int change_cwd(const char *path) {
   return do_user_call(SYS_user_ccwd, (uint64)path, 0, 0, 0, 0, 0, 0);
 }
+
+bool __shoutnow(){
+  return do_user_call(SHOULD_SHUTDOWN, 0, 0, 0, 0, 0, 0, 0);
+}
+
+void register_init(){
+  do_user_call(REGISTER_INIT,0,0,0,0,0,0,0);
+}
+
+char getch(){
+  return do_user_call(SYS_user_ask_for_a_key,0,0,0,0,0,0,0);
+}

@@ -364,6 +364,8 @@ int sys_reclaim_subprocess(int pid){
   return do_sys_reclaim_subprocess(pid);
 }
 
+extern bool __shutdown[NCPU];
+
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -432,6 +434,12 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_ccwd((char*)a1);
     case SYS_reclaim_subprocess:
       return sys_reclaim_subprocess(a1);
+    case SHOULD_SHUTDOWN:
+      return __shutdown[read_tp()];
+    case REGISTER_INIT:
+      return register_init_process();
+    case SYS_user_ask_for_a_key:
+      return spike_wait_for_a_key();
     default:
       panic("Unknown syscall %ld \n", a0);
   }
