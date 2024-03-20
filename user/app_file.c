@@ -10,9 +10,9 @@ int main(int argc, char *argv[]) {
   int fd1, fd2;
 
   printu("\n======== Test 0: create host file  ========\n");
-  printu("create: /hostfile.txt\n");
+  printu("create: hostfile.txt\n");
 
-  fd = open("/hostfile.txt", O_RDWR | O_CREAT);
+  fd = open("hostfile.txt", O_RDWR | O_CREAT);
   printu("file descriptor fd: %d\n", fd);
 
   write_u(fd, "Hello world!\n", 14);

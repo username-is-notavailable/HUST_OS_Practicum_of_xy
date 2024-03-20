@@ -185,9 +185,8 @@ struct vinode *hostfs_lookup(struct vinode *parent, struct dentry *sub_dentry) {
   // get complete path string
   char path[MAX_PATH_LEN];
   get_path_string(path, sub_dentry);
-
   spike_file_t *f = spike_file_open(path, O_RDWR, 0);
-
+  if(!f)return NULL;
   struct vinode *child_inode = hostfs_alloc_vinode(parent->sb);
   child_inode->i_fs_info = f;
   hostfs_update_vinode(child_inode);

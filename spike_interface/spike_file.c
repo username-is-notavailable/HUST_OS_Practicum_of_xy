@@ -56,7 +56,6 @@ void spike_file_decref(spike_file_t* f) {
     int kfd = f->kfd;
     mb();
     atomic_set(&f->refcnt, 0);
-
     frontend_syscall(HTIFSYS_close, kfd, 0, 0, 0, 0, 0, 0);
   }
 }
@@ -107,7 +106,9 @@ spike_file_t* spike_file_openat(int dirfd, const char* fn, int flags, int mode) 
     return f;
   } else {
     spike_file_decref(f);
+    if(ret==-2)return NULL;
     return ERR_PTR(ret);
+    // return NULL;
   }
 }
 
