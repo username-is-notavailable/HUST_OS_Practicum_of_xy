@@ -32,7 +32,7 @@ int hostfs_link(struct vinode *parent, struct dentry *sub_dentry, struct vinode 
 int hostfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *unlink_node);
 int hostfs_hook_open(struct vinode *f_inode, struct dentry *f_dentry);
 int hostfs_hook_close(struct vinode *f_inode, struct dentry *dentry);
-int hostfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset);
+int hostfs_readdir(struct dentry *dir_dentry, struct dir *dir, int *offset);
 struct vinode *hostfs_mkdir(struct vinode *parent, struct dentry *sub_dentry);
 struct super_block *hostfs_get_superblock(struct device *dev);
 

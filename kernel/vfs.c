@@ -434,7 +434,7 @@ int vfs_readdir(struct file *file, struct dir *dir) {
     sprint("vfs_readdir: cannot read a file!\n");
     return -1;
   }
-  return viop_readdir(file->f_dentry->dentry_inode, dir, &(file->offset));
+  return viop_readdir(file->f_dentry, dir, &(file->offset));
 }
 
 //

@@ -776,7 +776,8 @@ int rfs_hook_closedir(struct vinode *dir_vinode, struct dentry *dentry) {
 // if offset is 1, the second entry is read, and so on.
 // return: 0 on success, -1 when there are no more entry (end of the list).
 //
-int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
+int rfs_readdir(struct dentry *dir_dentry, struct dir *dir, int *offset) {
+  struct vinode *dir_vinode=dir_dentry->dentry_inode;
   int total_direntrys = dir_vinode->size / sizeof(struct rfs_direntry);
   int one_block_direntrys = RFS_BLKSIZE / sizeof(struct rfs_direntry);
 

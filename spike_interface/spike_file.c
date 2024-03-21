@@ -69,6 +69,11 @@ ssize_t spike_file_write(spike_file_t* f, const void* buf, size_t size) {
   return frontend_syscall(HTIFSYS_write, f->kfd, (uint64)buf, size, 0, 0, 0, 0);
 }
 
+int spike_file_readdir(char *path, char *d_name, int *offset){
+  // sprint("spike_file_readdir:path:%s offset:%d\n",path,*offset);
+  return frontend_syscall(HTIFSYS_readdir,(uint64)path,strlen(path)+1,(uint64)d_name,(*offset)++,0,0,0);
+}
+
 static spike_file_t* spike_file_get_free(void) {
   for (spike_file_t* f = spike_files; f < spike_files + MAX_FILES; f++)
     if (atomic_read(&f->refcnt) == 0 && atomic_cas(&f->refcnt, 0, INIT_FILE_REF) == 0)
@@ -114,6 +119,10 @@ spike_file_t* spike_file_openat(int dirfd, const char* fn, int flags, int mode) 
 
 spike_file_t* spike_file_open(const char* fn, int flags, int mode) {
   return spike_file_openat(AT_FDCWD, fn, flags, mode);
+}
+
+int spike_file_mkdir(const char* fn, int mode){
+  return frontend_syscall(HTIFSYS_mkdirat,AT_FDCWD,(uint64)fn,strlen(fn)+1,mode,0,0,0);
 }
 
 ssize_t spike_file_pread(spike_file_t* f, void* buf, size_t size, off_t offset) {

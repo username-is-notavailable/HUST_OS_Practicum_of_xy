@@ -149,7 +149,7 @@ void free_page(void *pa) {
   pmm_manager *p=pmm_hash_get(pa);
   if(!p)panic("free_page 0x%lx \n", pa);
 
-  sprint("%d>>>free_page 0x%lx \n",read_tp(), pa);
+  // sprint("%d>>>free_page 0x%lx \n",read_tp(), pa);
 
   spinlock_lock(&g_free_mem_list_lock);
 

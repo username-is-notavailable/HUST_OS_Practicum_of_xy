@@ -245,13 +245,19 @@ int hostfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinod
   return -1;
 }
 
-int hostfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
-  panic("hostfs_readdir not implemented!\n");
-  return -1;
+int hostfs_readdir(struct dentry *dir_dentry, struct dir *dir, int *offset) {
+  // panic("hostfs_readdir not implemented!\n");
+  char path[30];
+  get_path_string(path,dir_dentry);
+  // sprint(">>>>>>>>>>>>%s %p\n",path,dir->name);
+  return spike_file_readdir(path, dir->name, offset);
+  // return -1;
 }
 
 struct vinode *hostfs_mkdir(struct vinode *parent, struct dentry *sub_dentry) {
-  panic("hostfs_mkdir not implemented!\n");
+  char path[256];
+  get_path_string(path,sub_dentry);
+  if(spike_file_mkdir(path,0775)==0)return hostfs_lookup(parent,sub_dentry);
   return NULL;
 }
 

@@ -5,7 +5,7 @@
 #define NCPU 1
 
 //interval of timer interrupt. added @lab1_3
-#define TIMER_INTERVAL 100
+#define TIMER_INTERVAL 10000000
 
 // the maximum memory space that PKE is allowed to manage. added @lab2_1
 #define PKE_MAX_ALLOWABLE_RAM 128 * 1024 * 1024

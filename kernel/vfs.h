@@ -150,7 +150,7 @@ struct vinode_ops {
                                 struct dentry *sub_dentry);
 
   // directory operations
-  int (*viop_readdir)(struct vinode *dir_vinode, struct dir *dir, int *offset);
+  int (*viop_readdir)(struct dentry *dir_dentry, struct dir *dir, int *offset);
   struct vinode *(*viop_mkdir)(struct vinode *parent, struct dentry *sub_dentry);
 
   // write back inode to disk
@@ -180,7 +180,7 @@ struct vinode_ops {
 #define viop_link(node, name, link_node)       (node->i_ops->viop_link(node, name, link_node))
 #define viop_unlink(node, name, unlink_node)   (node->i_ops->viop_unlink(node, name, unlink_node))
 #define viop_lookup(parent, sub_dentry)        (parent->i_ops->viop_lookup(parent, sub_dentry))
-#define viop_readdir(dir_vinode, dir, offset)  (dir_vinode->i_ops->viop_readdir(dir_vinode, dir, offset))
+#define viop_readdir(dir_dentry, dir, offset)  (dir_dentry->dentry_inode->i_ops->viop_readdir(dir_dentry, dir, offset))
 #define viop_mkdir(dir, sub_dentry)            (dir->i_ops->viop_mkdir(dir, sub_dentry))
 #define viop_write_back_vinode(node)           (node->i_ops->viop_write_back_vinode(node))
 

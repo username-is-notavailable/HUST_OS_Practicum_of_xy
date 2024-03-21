@@ -84,7 +84,7 @@ int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *
 
 int rfs_hook_opendir(struct vinode *dir_vinode, struct dentry *dentry);
 int rfs_hook_closedir(struct vinode *dir_vinode, struct dentry *dentry);
-int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset);
+int rfs_readdir(struct dentry *dir_dentry, struct dir *dir, int *offset);
 struct vinode *rfs_mkdir(struct vinode *parent, struct dentry *sub_dentry);
 
 struct super_block *rfs_get_superblock(struct device *dev);
