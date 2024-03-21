@@ -60,23 +60,33 @@ int main(int argc, char *argv[]) {
 
   printu("\n======== Test 3: make dir ========\n");
 
-  // mkdir_u("/sub_dir");
+  mkdir_u("/sub_dir");
   printu("make: /sub_dir\n");
 
-  // ls("/");
+  ls("/");
 
-  // try to write a file in the new dir
-  printu("write: /sub_dir/ramfile\n");
+  // // try to write a file in the new dir
+  // printu("write: /sub_dir/ramfile\n");
 
-  fd = open("/sub_dir/ramfile", O_RDWR | O_CREAT);
-  printu("file descriptor fd: %d\n", fd);
+  // fd = open("/sub_dir/ramfile", O_RDWR | O_CREAT);
+  // printu("file descriptor fd: %d\n", fd);
 
-  write_u(fd, str, strlen(str));
-  printu("write content: \n%s\n", str);
+  // write_u(fd, str, strlen(str));
+  // printu("write content: \n%s\n", str);
 
-  close(fd);
+  // close(fd);
 
   // ls("/sub_dir");
+
+  printu("\n======== Test 4: rm file ========\n");
+
+  
+  // mkdir_u("/sub_dir");
+  printu("rm: /sub_dir/ramfile\n");
+
+  if(unlink_u("/sub_dir")!=0)printu("!!!!!!\n");
+
+  ls("/");
 
   printu("\nAll tests passed!\n\n");
   exit(0);

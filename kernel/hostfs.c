@@ -236,12 +236,19 @@ int hostfs_lseek(struct vinode *f_inode, ssize_t new_offset, int whence,
 
 int hostfs_link(struct vinode *parent, struct dentry *sub_dentry,
                 struct vinode *link_node) {
-  panic("hostfs_link not implemented!\n");
+  // panic("hostfs_link not implemented!\n");
+  // if(spike_file_link(sub_dentry->))
   return -1;
 }
 
 int hostfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *unlink_node) {
-  panic("hostfs_unlink not implemented!\n");
+  // panic("hostfs_unlink not implemented!\n");
+  char path[256];
+  get_path_string(path,sub_dentry);
+  if(spike_file_unlink(path,unlink_node->type==DIR_I?AT_REMOVEDIR:0)==0){
+    free_page(unlink_node);
+    return 0;
+  }
   return -1;
 }
 

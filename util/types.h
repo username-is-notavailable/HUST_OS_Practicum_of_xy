@@ -42,6 +42,9 @@ typedef unsigned long size_t;
 
 #define MAX_FILE_NAME_LEN 32
 
+# define AT_REMOVEDIR		0x200	/* Remove directory instead of
+					   unlinking file.  */
+
 struct dir {
   char name[MAX_FILE_NAME_LEN];
   int inum;

@@ -137,6 +137,14 @@ ssize_t spike_file_lseek(spike_file_t* f, size_t ptr, int dir) {
   return frontend_syscall(HTIFSYS_lseek, f->kfd, ptr, dir, 0, 0, 0, 0);
 }
 
+int spike_file_link(const char* old, const char* new, int flag){
+  return frontend_syscall(HTIFSYS_linkat, AT_FDCWD, (uint64)old, strlen(old)+1, AT_FDCWD, (uint64)new, strlen(new)+1, flag);
+}
+
+int spike_file_unlink(const char* name, int flag){
+  return frontend_syscall(HTIFSYS_unlinkat, AT_FDCWD, (uint64)name, strlen(name)+1, flag, 0, 0, 0);
+}
+
 spike_file_t* spike_file_get(int fd) {
   spike_file_t* f;
   if (fd < 0 || fd >= MAX_FDS || (f = atomic_read(&spike_fds[fd])) == NULL)

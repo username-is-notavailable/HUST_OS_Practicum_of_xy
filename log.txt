@@ -74,10 +74,29 @@ hello world
 0>>>
 ======== Test 3: make dir ========
 0>>>make: /sub_dir
-0>>>write: /sub_dir/ramfile
-0>>>file descriptor fd: 0
-0>>>write content: 
-hello world
+0>>>------------------------------
+0>>>ls "/" fd: 0:
+0>>>[name]               [inode_num]
+0>>>test                 2
+0>>>bin                  2
+0>>>sub_dir              2
+0>>>hostfile.txt         2
+0>>>shellrc              2
+0>>>------------------------------
+0>>>
+======== Test 4: rm file ========
+0>>>rm: /sub_dir/ramfile
+vfs_unlink: cannot unlink a directory!
+0>>>!!!!!!
+0>>>------------------------------
+0>>>ls "/" fd: 0:
+0>>>[name]               [inode_num]
+0>>>test                 2
+0>>>bin                  2
+0>>>sub_dir              2
+0>>>hostfile.txt         2
+0>>>shellrc              2
+0>>>------------------------------
 0>>>
 All tests passed!
 
