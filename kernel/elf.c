@@ -265,14 +265,14 @@ elf_status elf_load(elf_ctx *ctx) {
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].npages = page_num;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].va = ROUNDDOWN(ph_addr.vaddr,PGSIZE);
 
-      sprint( "%d>>>CODE_SEGMENT added at mapped info offset:%d\n",read_tp() , CODE_SEGMENT );
+      log( "CODE_SEGMENT added at mapped info offset:%d\n", CODE_SEGMENT );
     }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
       if((page_num=elf_alloc_mb_and_load(ctx,&ph_addr,prot_to_type(PROT_WRITE|PROT_READ, 1)))<0)return EL_EIO;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].seg_type = DATA_SEGMENT;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].npages = page_num;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].va = ROUNDDOWN(ph_addr.vaddr,PGSIZE);
 
-      sprint( "%d>>>DATA_SEGMENT added at mapped info offset:%d va:%p npages:%d\n",read_tp(), DATA_SEGMENT , ROUNDDOWN(ph_addr.vaddr,PGSIZE), page_num);
+      log( "DATA_SEGMENT added at mapped info offset:%d va:%p npages:%d\n", DATA_SEGMENT , ROUNDDOWN(ph_addr.vaddr,PGSIZE), page_num);
     }else
       panic( "%d>>>unknown program segment encountered, segment flag:%d.\n",read_tp(), ph_addr.flags );
 
@@ -286,7 +286,7 @@ elf_status elf_load(elf_ctx *ctx) {
 // load the elf of user application, by using the spike file interface.
 //
 void load_bincode_from_host_elf(process *p, char *filename) {
-  sprint("%d>>>Application: %s\n",read_tp(), filename);
+  log("Application: %s\n", filename);
 
   //elf loading. elf_ctx is defined in kernel/elf.h, used to track the loading process.
   elf_ctx elfloader;
@@ -315,7 +315,7 @@ void load_bincode_from_host_elf(process *p, char *filename) {
   // close the vfs file
   vfs_close( info.f );
 
-  sprint("%d>>>Application program entry point (virtual address): 0x%lx\n",read_tp(), p->trapframe->epc);
+  log("Application program entry point (virtual address): 0x%lx\n", p->trapframe->epc);
 }
 
 // 

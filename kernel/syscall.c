@@ -71,7 +71,7 @@ ssize_t sys_user_print(const char* buf, size_t n) {
 // implement the SYS_user_exit syscall
 //
 ssize_t sys_user_exit(uint64 code) {
-  sprint("%d>>>User pid:%d exit with code:%d.\n",read_tp(), current[read_tp()]->pid, code);
+  log("User pid:%d exit with code:%d.\n", current[read_tp()]->pid, code);
   // reclaim the current process, and reschedule. added @lab3_1
   free_process( current[read_tp()] );
   
@@ -118,7 +118,7 @@ uint64 sys_user_free_page(uint64 va) {
 // kerenl entry point of naive_fork
 //
 ssize_t sys_user_fork() {
-  sprint("%d>>>User call fork.\n",read_tp());
+  log("User call fork.\n");
   return do_fork( current[read_tp()] );
 }
 
@@ -317,7 +317,7 @@ ssize_t sys_user_print_backtrace(uint64 depth) {
       // sprint("%s %ulld\n",symbols[i].name,symbols[i].value);
       uint64 ra = *(uint64*)user_va_to_pa(current[tp]->pagetable,(void*)(fp-8));
       if(ra>=current[tp]->symbols[i].value&&ra<=current[tp]->symbols[i].end){
-        sprint("%s\n",current[tp]->symbols_names + current[tp]->symbols[i].name);
+        log("%s\n",current[tp]->symbols_names + current[tp]->symbols[i].name);
         if(!strcmp(current[tp]->symbols_names + current[tp]->symbols[i].name,"main"))
           return i;
       }
@@ -329,7 +329,7 @@ ssize_t sys_user_print_backtrace(uint64 depth) {
 ssize_t sys_user_printpa(uint64 va)
 {
   uint64 pa = (uint64)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), (void*)va);
-  sprint("%lx\n", pa);
+  log("%lx\n", pa);
   return 0;
 }
 
@@ -383,7 +383,7 @@ uint64 sys_user_sem_V(uint64 num){
     // sprint("adfasdfsdfadfas");
     assert(sems[num].wait_queue);
     process *p=sems[num].wait_queue;
-    // if(num==0)sprint("sem[0]:%d\n",sems[0].sem);
+    // if(num==0)log("sem[0]:%d\n",sems[0].sem);
     sems[num].wait_queue=p->queue_next;
     p->status=READY;
     // sprint("insert--------------------------------------------------------------\n");
@@ -421,8 +421,7 @@ ssize_t sys_user_ccwd(char *path, uint64 len) {
   char *ppath=(char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, len, TRUE);
   // sprint(ppath);
   if((cwd=lookup_final_dentry(ppath,&cwd,missname)))
-    {current[tp]->pfiles->cwd=cwd;
-    sprint("%p\n",cwd);}
+    current[tp]->pfiles->cwd=cwd;
   sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, (void*)ppath, len, FALSE);
   return 0;
 }

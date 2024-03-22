@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "spike_interface/spike_utils.h"
 #include "spike_interface/atomic.h"
+#include "vmm.h"
 
 typedef struct pmm_manager_t
 {
@@ -44,6 +45,17 @@ int vm_alloc_stage[NCPU]={0};
 
 uint64 pmm_hash(void*pa){
   return (((uint64)pa)>>PGSHIFT)%(HASH_TABLE_PAGES*PGSIZE/sizeof(pmm_manager));
+}
+
+void print_pmm_hash(){
+  for(int i=0;i<(HASH_TABLE_PAGES*PGSIZE/sizeof(pmm_manager));i++){
+    pmm_manager *p=pmm_hash_table[i].next;
+    if(p){
+      log("%d:",i);
+      while (p)log("->(pa:%p size:%d)",p->pa,p->pages),p=p->next;
+      log("\n");
+    }
+  }
 }
 
 static void *__alloc_p(uint64 pages){
@@ -98,7 +110,31 @@ void pmm_hash_put(void*pa,uint64 pages){
   p->next=pmm_hash_table[hash_index].next;
   pmm_hash_table[hash_index].next=p;
 
+  // sprint("put\n");
+  // print_pmm_hash();
+
   spinlock_unlock(&manager_lock);
+}
+
+pmm_manager *pmm_hash_erase(pmm_manager* p){
+  if(!p)return NULL;
+
+  spinlock_lock(&manager_lock);
+
+  pmm_manager *pre = pmm_hash_table + pmm_hash(p->pa);
+  while(pre&&pre->next!=p)pre=pre->next;
+
+  pre->next=p->next;
+
+  p->next=free_manager_list.next;
+  free_manager_list.next=p;
+
+  // sprint("erase\n");
+  // print_pmm_hash();
+
+  spinlock_unlock(&manager_lock);
+
+  return p;
 }
 
 //
@@ -126,11 +162,13 @@ static void create_freepage_list(uint64 start, uint64 end) {
 }
 
 pmm_manager *pmm_hash_get(void*pa){
+  // sprint("hash_get:%p\n",pa);
   pmm_manager *p;
   spinlock_lock(&manager_lock);
   for(p=pmm_hash_table[pmm_hash(pa)].next;p;p=p->next)
     if(p->pa==pa)break;
   spinlock_unlock(&manager_lock);
+  // sprint("%p\n",p);
   return p;
 }
 
@@ -146,6 +184,7 @@ void free_page(void *pa) {
   // n->next = g_free_mem_list.next;
   // g_free_mem_list.next = n;
 
+  // sprint("free>>>%p\n",pa);
   pmm_manager *p=pmm_hash_get(pa);
   if(!p)panic("free_page 0x%lx \n", pa);
 
@@ -176,6 +215,8 @@ void free_page(void *pa) {
     npre->next=new_node->next;
     npre->pages+=new_node->pages;
   }
+
+  pmm_hash_erase(p);
 
   spinlock_unlock(&g_free_mem_list_lock);
 
@@ -241,7 +282,7 @@ void pmm_init() {
   uint64 g_kernel_end = (uint64)&_end;
 
   uint64 pke_kernel_size = g_kernel_end - g_kernel_start;
-  sprint("%d>>>PKE kernel start 0x%lx, PKE kernel end: 0x%lx, PKE kernel size: 0x%lx .\n",read_tp(),
+  log("PKE kernel start 0x%lx, PKE kernel end: 0x%lx, PKE kernel size: 0x%lx .\n",
     g_kernel_start, g_kernel_end, pke_kernel_size);
 
   // free memory starts from the end of PKE kernel and must be page-aligined
@@ -254,28 +295,10 @@ void pmm_init() {
     panic( "Error when recomputing physical memory size (g_mem_size).\n" );
 
   free_mem_end_addr = g_mem_size + DRAM_BASE;
-  sprint("%d>>>free physical memory address: [0x%lx, 0x%lx] \n",read_tp() ,free_mem_start_addr,
+  log("free physical memory address: [0x%lx, 0x%lx] \n" ,free_mem_start_addr,
     free_mem_end_addr - 1);
 
-  sprint("%d>>>kernel memory manager is initializing ...\n",read_tp());
+  log("kernel memory manager is initializing ...\n");
   // create the list of free pages
   create_freepage_list(free_mem_start_addr, free_mem_end_addr);
-}
-
-pmm_manager *pmm_hash_erase(pmm_manager* p){
-  if(!p)return NULL;
-
-  spinlock_lock(&manager_lock);
-
-  pmm_manager *pre = pmm_hash_table + pmm_hash(p->pa);
-  while(pre&&pre->next!=p)pre=pre->next;
-
-  pre->next=p->next;
-
-  p->next=free_manager_list.next;
-  free_manager_list.next=p;
-
-  spinlock_unlock(&manager_lock);
-
-  return p;
 }

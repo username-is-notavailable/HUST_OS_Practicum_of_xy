@@ -2,6 +2,7 @@
 #define _VFS_H_
 
 #include "util/types.h"
+#include "config.h"
 
 #define MAX_VFS_DEV 10            // the maximum number of vfs_dev_list
 #define MAX_DENTRY_NAME_LEN 30    // the maximum length of dentry name
@@ -209,5 +210,9 @@ struct dentry *lookup_final_dentry(const char *path, struct dentry **parent,
 void get_base_name(const char *path, char *base_name);
 
 char *get_path(char* path, struct dentry *p_dentry);
+
+extern struct file *log_file[NCPU];
+
+void log(const char *s,...);
 
 #endif

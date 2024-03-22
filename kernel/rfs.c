@@ -104,7 +104,7 @@ int rfs_format_dev(struct device *dev) {
 
   // write root directory inode to RAM Disk0 (ino = 0)
   if (rfs_write_dinode(rdev, &root_dinode, 0) != 0) {
-    sprint("RFS: failed to write root inode!\n");
+    log("RFS: failed to write root inode!\n");
     return -1;
   }
 
@@ -115,11 +115,11 @@ int rfs_format_dev(struct device *dev) {
 
   // write the bitmap to RAM Disk0
   if (rfs_w1block(rdev, RFS_BLK_OFFSET_BITMAP) != 0) {  // write to device
-    sprint("RFS: failed to write bitmap!\n");
+    log("RFS: failed to write bitmap!\n");
     return -1;
   }
 
-  sprint("RFS: format %s done!\n", dev->dev_name);
+  log("RFS: format %s done!\n", dev->dev_name);
   return 0;
 }
 
@@ -209,14 +209,14 @@ int rfs_free_block(struct super_block *sb, int block_num) {
 //
 int rfs_add_direntry(struct vinode *dir, const char *name, int inum) {
   if (dir->type != DIR_I) {
-    sprint("rfs_add_direntry: not a directory!\n");
+    log("rfs_add_direntry: not a directory!\n");
     return -1;
   }
 
   struct rfs_device *rdev = rfs_device_list[dir->sb->s_dev->dev_id];
   int n_block = dir->addrs[dir->size / RFS_BLKSIZE];
   if (rfs_r1block(rdev, n_block) != 0) {
-    sprint("rfs_add_direntry: failed to read block %d!\n", n_block);
+    log("rfs_add_direntry: failed to read block %d!\n", n_block);
     return -1;
   }
 
@@ -228,7 +228,7 @@ int rfs_add_direntry(struct vinode *dir, const char *name, int inum) {
 
   // write the modified (parent) directory block back to disk
   if (rfs_w1block(rdev, n_block) != 0) {
-    sprint("rfs_add_direntry: failed to write block %d!\n", n_block);
+    log("rfs_add_direntry: failed to write block %d!\n", n_block);
     return -1;
   }
 
@@ -237,7 +237,7 @@ int rfs_add_direntry(struct vinode *dir, const char *name, int inum) {
 
   // write the parent dir inode back to disk
   if (rfs_write_back_vinode(dir) != 0) {
-    sprint("rfs_add_direntry: failed to write back parent dir inode!\n");
+    log("rfs_add_direntry: failed to write back parent dir inode!\n");
     return -1;
   }
 
@@ -269,7 +269,7 @@ int rfs_write_back_vinode(struct vinode *vinode) {
 
   struct rfs_device *rdev = rfs_device_list[vinode->sb->s_dev->dev_id];
   if (rfs_write_dinode(rdev, &dinode, vinode->inum) != 0) {
-    sprint("rfs_free_write_back_inode: failed to write back disk inode!\n");
+    log("rfs_free_write_back_inode: failed to write back disk inode!\n");
     return -1;
   }
 
@@ -283,7 +283,7 @@ int rfs_update_vinode(struct vinode *vinode) {
   struct rfs_device *rdev = rfs_device_list[vinode->sb->s_dev->dev_id];
   struct rfs_dinode *dinode = rfs_read_dinode(rdev, vinode->inum);
   if (dinode == NULL) {
-    sprint("rfs_update_vinode: failed to read disk inode!\n");
+    log("rfs_update_vinode: failed to read disk inode!\n");
     return -1;
   }
   vinode->size = dinode->size;
@@ -516,7 +516,7 @@ struct vinode *rfs_create(struct vinode *parent, struct dentry *sub_dentry) {
   // ** append the new file as a direntry to its parent dir
   int result = rfs_add_direntry(parent, sub_dentry->name, free_inum);
   if (result == -1) {
-    sprint("rfs_create: rfs_add_direntry failed");
+    log("rfs_create: rfs_add_direntry failed");
     return NULL;
   }
 
@@ -535,20 +535,20 @@ int rfs_lseek(struct vinode *f_inode, ssize_t new_offset, int whence, int *offse
   switch (whence) {
     case LSEEK_SET:
       if (new_offset < 0 || new_offset > file_size) {
-        sprint("rfs_lseek: invalid offset!\n");
+        log("rfs_lseek: invalid offset!\n");
         return -1;
       }
       *offset = new_offset;
       break;
     case LSEEK_CUR:
       if (*offset + new_offset < 0 || *offset + new_offset > file_size) {
-        sprint("rfs_lseek: invalid offset!\n");
+        log("rfs_lseek: invalid offset!\n");
         return -1;
       }
       *offset += new_offset;
       break;
     default:
-      sprint("rfs_lseek: invalid whence!\n");
+      log("rfs_lseek: invalid whence!\n");
       return -1;
   }
   
@@ -562,7 +562,7 @@ int rfs_disk_stat(struct vinode *vinode, struct istat *istat) {
   struct rfs_device *rdev = rfs_device_list[vinode->sb->s_dev->dev_id];
   struct rfs_dinode *dinode = rfs_read_dinode(rdev, vinode->inum);
   if (dinode == NULL) {
-    sprint("rfs_disk_stat: read dinode failed!\n");
+    log("rfs_disk_stat: read dinode failed!\n");
     return -1;
   }
 
@@ -632,7 +632,7 @@ int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *
   int inum = p_direntry->inum;
 
   if (delete_index == total_direntrys) {
-    sprint("unlink: file %s not found.\n", sub_dentry->name);
+    log("unlink: file %s not found.\n", sub_dentry->name);
     return -1;
   }
 
@@ -716,7 +716,7 @@ int rfs_unlink(struct vinode *parent, struct dentry *sub_dentry, struct vinode *
 
   // ** write the directory file's inode back to disk
   if (rfs_write_back_vinode(parent) != 0) {
-    sprint("rfs_unlink: rfs_write_back_vinode failed");
+    log("rfs_unlink: rfs_write_back_vinode failed");
     return -1;
   }
 
@@ -844,7 +844,7 @@ struct vinode *rfs_mkdir(struct vinode *parent, struct dentry *sub_dentry) {
   // ** add a direntry to the directory
   int result = rfs_add_direntry(parent, sub_dentry->name, free_inum);
   if (result == -1) {
-    sprint("rfs_mkdir: rfs_add_direntry failed");
+    log("rfs_mkdir: rfs_add_direntry failed");
     return NULL;
   }
 

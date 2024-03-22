@@ -156,7 +156,7 @@ process* alloc_process() {
   procs[tp][i].mapped_info[SYSTEM_SEGMENT].npages = 1;
   procs[tp][i].mapped_info[SYSTEM_SEGMENT].seg_type = SYSTEM_SEGMENT;
 
-  sprint("%d>>>in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",read_tp(),
+  log("in alloc_proc. user frame 0x%lx, user stack 0x%lx, user kstack 0x%lx \n",
     procs[tp][i].trapframe, procs[tp][i].trapframe->regs.sp, procs[tp][i].kstack);
 
   // initialize the process's heap manager
@@ -173,7 +173,7 @@ process* alloc_process() {
 
   // initialize files_struct
   procs[tp][i].pfiles = init_proc_file_management();
-  sprint("%d>>>in alloc_proc. build proc_file_management successfully.\n",read_tp());
+  log("in alloc_proc. build proc_file_management successfully.\n");
 
   // return after initialization.
   procs[tp][i].waiting_for_child=0;
@@ -212,9 +212,9 @@ int free_process( process* proc ) {
 //
 int do_fork( process* parent)
 {
-  sprint("%d>>>DATA: va %p npages %d\n",read_tp(),parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
+  log("DATA: va %p npages %d\n",parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
   uint64 tp = read_tp();
-  sprint( "%d>>>will fork a child from parent %d.\n", read_tp(),parent->pid );
+  log( "will fork a child from parent %d.\n",parent->pid );
   process* child = alloc_process();
   
   // sprint("*************************************************\n");
@@ -284,7 +284,7 @@ int do_fork( process* parent)
         //panic( "You need to implement the code segment mapping of child in lab3_1.\n" );
         user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[CODE_SEGMENT].va, PGSIZE*parent->mapped_info[CODE_SEGMENT].npages, lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),
                       prot_to_type(PROT_EXEC | PROT_READ, 1));
-        sprint("%d>>>do_fork map code segment at pa:%lx of parent to child at va:%lx.\n",read_tp(),lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),parent->mapped_info[CODE_SEGMENT].va);
+        log("do_fork map code segment at pa:%lx of parent to child at va:%lx.\n",lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),parent->mapped_info[CODE_SEGMENT].va);
         // after mapping, register the vm region (do not delete codes below!)
         child->mapped_info[child->total_mapped_region].va = parent->mapped_info[CODE_SEGMENT].va;
         child->mapped_info[child->total_mapped_region].npages =
@@ -293,7 +293,7 @@ int do_fork( process* parent)
         child->total_mapped_region++;
         break;
       case DATA_SEGMENT:
-        sprint("%d>>>DATA: va %p npages %d\n",read_tp(),parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
+        log("DATA: va %p npages %d\n",parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
 
         user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[DATA_SEGMENT].va, PGSIZE*parent->mapped_info[DATA_SEGMENT].npages, 
                       lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va),
@@ -303,7 +303,7 @@ int do_fork( process* parent)
           *pte|=PTE_COW;
           *pte&=(~PTE_W);
         }
-        sprint("%d>>>do_fork map data segment at pa:%lx of parent to child at va:%lx.\n",read_tp(),lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va),parent->mapped_info[DATA_SEGMENT].va);
+        log("do_fork map data segment at pa:%lx of parent to child at va:%lx.\n",lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va),parent->mapped_info[DATA_SEGMENT].va);
         // after mapping, register the vm region (do not delete codes below!)
         child->mapped_info[DATA_SEGMENT].va = parent->mapped_info[DATA_SEGMENT].va;
         child->mapped_info[DATA_SEGMENT].npages =
@@ -452,13 +452,15 @@ int do_sys_reclaim_subprocess(int pid){
   if(!(--(*(((uint64*)p->symbols_names)-1))))free_page(((void*)p->symbols_names)-8);
   if(!(--(*(((uint64*)p->symbols)-1))))free_page(((void*)p->symbols)-8);
 
+  
+
   free_page((void*)ROUNDDOWN(p->kstack,PGSIZE));
 
   free_page(p->pfiles);
 
   //unmap stack
   user_vm_unmap(p->pagetable,p->mapped_info[STACK_SEGMENT].va,p->mapped_info[STACK_SEGMENT].npages*PGSIZE,TRY);
-  
+
   //unmap heap 
   __user_vm_unmap_with_cow(p->pagetable,p->mapped_info[HEAP_SEGMENT].va,p->mapped_info[HEAP_SEGMENT].npages*PGSIZE);
   

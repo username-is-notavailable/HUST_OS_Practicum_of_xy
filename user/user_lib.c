@@ -183,7 +183,7 @@ int exec(char *command, char *para) {
 //
 int wait(int pid) {
   int r = do_user_call(SYS_user_wait, pid, 0, 0, 0, 0, 0, 0);
-  // printu("gethere\n");
+  printu("pid:%d\n",r);
   return do_user_call(SYS_reclaim_subprocess,r,0,0,0,0,0,0);
 }
 

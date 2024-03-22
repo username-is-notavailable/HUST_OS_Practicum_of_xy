@@ -7,18 +7,18 @@ static void debug_line(uint64 mepc) {
   uint64 tp=read_tp();
   addr_line *line = current[tp]->line;
   int i;
-  // sprint("%x\n", mepc);
+  // log("%x\n", mepc);
   for(i=0;i<current[tp]->line_ind;i++){
-    // sprint("%x\n", (line+i)->addr);
+    // log("%x\n", (line+i)->addr);
     if((line+i)->addr==mepc)break;
   }
   if(i>=current[tp]->line_ind){
-    sprint("unknow error! mepc:%lx\n", mepc);
+    log("unknow error! mepc:%lx\n", mepc);
     return ;
   }
-  // sprint("line: %d\n", (line+i)->line);
-  // sprint("file: %s\n", (current->file+(line+i)->file)->file);
-  // sprint("dir: %s\n", *(current->dir+((current->file+(line+i)->file)->dir)));
+  // log("line: %d\n", (line+i)->line);
+  // log("file: %s\n", (current->file+(line+i)->file)->file);
+  // log("dir: %s\n", *(current->dir+((current->file+(line+i)->file)->dir)));
   uint64 line_num = (line+i)->line; 
   char *file = (current[tp]->file+(line+i)->file)->file;
   char *dir = *(current[tp]->dir+((current[tp]->file+(line+i)->file)->dir));
@@ -28,7 +28,7 @@ static void debug_line(uint64 mepc) {
   strcpy(path,dir);
   path[dir_len]='/';
   strcpy(path+dir_len+1,file);
-  // sprint("%s\n",path);
+  // log("%s\n",path);
   spike_file_t *f = spike_file_open(path,O_RDONLY,0);
   struct stat f_stat;
   spike_file_stat(f, &f_stat);
@@ -41,7 +41,7 @@ static void debug_line(uint64 mepc) {
       char printstring[1024];
       memcpy(printstring,file_content+line_f,line_r-line_f);
       printstring[line_r-line_f]=0;
-      sprint("Runtime error at %s:%d\n%s\n",path,line_num,printstring);
+      log("Runtime error at %s:%d\n%s\n",path,line_num,printstring);
       break;
     }
     line_f=(++line_r);
@@ -81,16 +81,13 @@ void handle_mtrap() {
       handle_timer();
       break;
     case CAUSE_FETCH_ACCESS:
-      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_instruction_access_fault();
       break;
     case CAUSE_LOAD_ACCESS:
-      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_load_access_fault();
     case CAUSE_STORE_ACCESS:
-      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_store_access_fault();
       break;
@@ -98,26 +95,22 @@ void handle_mtrap() {
       // TODO (lab1_2): call handle_illegal_instruction to implement illegal instruction
       // interception, and finish lab1_2.
       //panic( "call handle_illegal_instruction to accomplish illegal instruction interception for lab1_2.\n" );
-      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_illegal_instruction();
 
       break;
     case CAUSE_MISALIGNED_LOAD:
-      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_misaligned_load();
       break;
     case CAUSE_MISALIGNED_STORE:
-      sprint("%d>>>",read_tp());
       debug_line(read_csr(mepc));
       handle_misaligned_store();
       break;
 
     default:
-      sprint("%d>>>",read_tp());
-      sprint("machine trap(): unexpected mscause %p\n", mcause);
-      sprint("            mepc=%p mtval=%p\n", read_csr(mepc), read_csr(mtval));
+      log("machine trap(): unexpected mscause %p\n", mcause);
+      log("            mepc=%p mtval=%p\n", read_csr(mepc), read_csr(mtval));
       panic( "unexpected exception happened in M-mode.\n" );
       break;
   }

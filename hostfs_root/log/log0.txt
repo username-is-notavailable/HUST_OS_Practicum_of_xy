@@ -1,0 +1,193 @@
+kernel page table is on 
+Switch to user mode...
+in alloc_proc. user frame 0x0000000080286000, user stack 0x000000007ffff000, user kstack 0x0000000080289000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+User application is loading.
+Application: /bin/app_exec
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+Application: /bin/app_shell
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x0000000000010162
+f1
+f2
+f3
+f4
+f5
+f6
+main
+User call fork.
+DATA: va 0x0000000000011000 npages 1
+will fork a child from parent 0.
+in alloc_proc. user frame 0x00000000802b0000, user stack 0x000000007ffff000, user kstack 0x00000000802b4000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+do_fork map code segment at pa:00000000802a5000 of parent to child at va:0000000000010000.
+DATA: va 0x0000000000011000 npages 1
+do_fork map data segment at pa:00000000802a6000 of parent to child at va:0000000000011000.
+going to insert process 1 to ready queue.
+going to schedule process 1 to run.
+Application: /bin/app_mkdir
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+User pid:1 exit with code:0.
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+handle_page_fault: 0000000000011000
+page_pa:0x00000000802b2000
+handle_page_fault: 0000000000400000
+page_pa:0x00000000802b4000
+handle_page_fault: 0000000000401000
+page_pa:0x00000000802b5000
+User call fork.
+DATA: va 0x0000000000011000 npages 1
+will fork a child from parent 0.
+in alloc_proc. user frame 0x00000000802bb000, user stack 0x000000007ffff000, user kstack 0x00000000802cb000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+do_fork map code segment at pa:00000000802a5000 of parent to child at va:0000000000010000.
+DATA: va 0x0000000000011000 npages 1
+do_fork map data segment at pa:00000000802b2000 of parent to child at va:0000000000011000.
+going to insert process 1 to ready queue.
+going to schedule process 1 to run.
+Application: /bin/app_touch
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+User pid:1 exit with code:0.
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+handle_page_fault: 0000000000011000
+page_pa:0x00000000802c9000
+handle_page_fault: 0000000000400000
+page_pa:0x00000000802cb000
+handle_page_fault: 0000000000401000
+page_pa:0x00000000802cc000
+User call fork.
+DATA: va 0x0000000000011000 npages 1
+will fork a child from parent 0.
+in alloc_proc. user frame 0x00000000802d4000, user stack 0x000000007ffff000, user kstack 0x00000000802db000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+do_fork map code segment at pa:00000000802a5000 of parent to child at va:0000000000010000.
+DATA: va 0x0000000000011000 npages 1
+do_fork map data segment at pa:00000000802c9000 of parent to child at va:0000000000011000.
+going to insert process 1 to ready queue.
+going to schedule process 1 to run.
+Application: /bin/app_touch
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+User pid:1 exit with code:0.
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+handle_page_fault: 0000000000011000
+page_pa:0x00000000802d9000
+handle_page_fault: 0000000000400000
+page_pa:0x00000000802db000
+handle_page_fault: 0000000000401000
+page_pa:0x00000000802e2000
+User call fork.
+DATA: va 0x0000000000011000 npages 1
+will fork a child from parent 0.
+in alloc_proc. user frame 0x00000000802e8000, user stack 0x000000007ffff000, user kstack 0x00000000802f1000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+do_fork map code segment at pa:00000000802a5000 of parent to child at va:0000000000010000.
+DATA: va 0x0000000000011000 npages 1
+do_fork map data segment at pa:00000000802d9000 of parent to child at va:0000000000011000.
+going to insert process 1 to ready queue.
+going to schedule process 1 to run.
+Application: /bin/app_echo
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+User pid:1 exit with code:0.
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+handle_page_fault: 0000000000011000
+page_pa:0x00000000802ef000
+handle_page_fault: 0000000000400000
+page_pa:0x00000000802f1000
+handle_page_fault: 0000000000401000
+page_pa:0x00000000802f8000
+User call fork.
+DATA: va 0x0000000000011000 npages 1
+will fork a child from parent 0.
+in alloc_proc. user frame 0x00000000802fe000, user stack 0x000000007ffff000, user kstack 0x0000000080307000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+do_fork map code segment at pa:00000000802a5000 of parent to child at va:0000000000010000.
+DATA: va 0x0000000000011000 npages 1
+do_fork map data segment at pa:00000000802ef000 of parent to child at va:0000000000011000.
+going to insert process 1 to ready queue.
+going to schedule process 1 to run.
+Application: /bin/app_cat
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+User pid:1 exit with code:0.
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+handle_page_fault: 0000000000011000
+page_pa:0x0000000080305000
+handle_page_fault: 0000000000400000
+page_pa:0x0000000080307000
+handle_page_fault: 0000000000401000
+page_pa:0x000000008030e000
+User call fork.
+DATA: va 0x0000000000011000 npages 1
+will fork a child from parent 0.
+in alloc_proc. user frame 0x0000000080314000, user stack 0x000000007ffff000, user kstack 0x000000008031d000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+do_fork map code segment at pa:00000000802a5000 of parent to child at va:0000000000010000.
+DATA: va 0x0000000000011000 npages 1
+do_fork map data segment at pa:0000000080305000 of parent to child at va:0000000000011000.
+going to insert process 1 to ready queue.
+going to schedule process 1 to run.
+Application: /bin/app_ls
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+User pid:1 exit with code:0.
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+handle_page_fault: 0000000000011000
+page_pa:0x000000008031b000
+handle_page_fault: 0000000000400000
+page_pa:0x000000008031d000
+handle_page_fault: 0000000000401000
+page_pa:0x0000000080324000
+User call fork.
+DATA: va 0x0000000000011000 npages 1
+will fork a child from parent 0.
+in alloc_proc. user frame 0x000000008032a000, user stack 0x000000007ffff000, user kstack 0x0000000080337000 
+FS: created a file management struct for a process.
+in alloc_proc. build proc_file_management successfully.
+do_fork map code segment at pa:00000000802a5000 of parent to child at va:0000000000010000.
+DATA: va 0x0000000000011000 npages 1
+do_fork map data segment at pa:000000008031b000 of parent to child at va:0000000000011000.
+going to insert process 1 to ready queue.
+going to schedule process 1 to run.
+Application: /bin/app_ls
+CODE_SEGMENT added at mapped info offset:4
+DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
+Application program entry point (virtual address): 0x00000000000100e8
+User pid:1 exit with code:0.
+going to insert process 0 to ready queue.
+going to schedule process 0 to run.
+handle_page_fault: 0000000000011000
+page_pa:0x0000000080332000
+handle_page_fault: 0000000000400000
+page_pa:0x0000000080337000
+handle_page_fault: 0000000000401000
+page_pa:0x000000008033b000
+User pid:0 exit with code:0.
+no more ready processes, system shutdown now.

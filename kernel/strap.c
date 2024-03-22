@@ -39,7 +39,7 @@ static uint64 g_ticks[NCPU] = {0};
 //
 void handle_mtimer_trap() {
   uint64 tp=read_tp();
-  sprint("Ticks %d\n", g_ticks[tp]);
+  log("Ticks %d\n", g_ticks[tp]);
   // TODO (lab1_3): increase g_ticks to record this "tick", and then clear the "SIP"
   // field in sip register.
   // hint: use write_csr to disable the SIP_SSIP bit in sip.
@@ -54,7 +54,7 @@ void handle_mtimer_trap() {
 // stval: the virtual address that causes pagefault when being accessed.
 //
 void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
-  sprint("%d>>>handle_page_fault: %lx\n",read_tp(), stval);
+  log("handle_page_fault: %lx\n", stval);
   switch (mcause) {
     case CAUSE_STORE_PAGE_FAULT:
       // TODO (lab2_3): implement the operations that solve the page fault to
@@ -72,7 +72,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
         
           // sprint("%x\n",page_pa);
           if(!page_pa){
-            sprint("Error when COW\n");
+            log("Error when COW\n");
             return ;
           }
           memcpy((void*)pa,(void*)page_pa,PGSIZE);
@@ -80,7 +80,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
         }
         user_vm_unmap(current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE),PGSIZE,NO_FREE);
         // sprint("unmap\n");
-        sprint("%d>>>page_pa:%p\n",tp,page_pa);
+        log("page_pa:%p\n",page_pa);
         user_vm_map((pagetable_t)current[tp]->pagetable, ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)page_pa,
          prot_to_type(PROT_WRITE | PROT_READ, 1));
       }
@@ -98,7 +98,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       
       break;
     default:
-      sprint("unknown page fault.\n");
+      log("unknown page fault.\n");
       break;
   }
 }
@@ -157,8 +157,8 @@ void smode_trap_handler(void) {
       handle_user_page_fault(cause, read_csr(sepc), read_csr(stval));
       break;
     default:
-      sprint("hartid=%d smode_trap_handler(): unexpected scause %p\n", read_tp(), read_csr(scause));
-      sprint("            sepc=%p stval=%p\n", read_csr(sepc), read_csr(stval));
+      log("hartid=%d smode_trap_handler(): unexpected scause %p\n", read_tp(), read_csr(scause));
+      log("            sepc=%p stval=%p\n", read_csr(sepc), read_csr(stval));
       panic( "unexpected exception happened.\n" );
       break;
   }

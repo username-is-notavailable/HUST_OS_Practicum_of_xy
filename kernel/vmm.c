@@ -28,7 +28,7 @@ void vm_map_managers_init(){
 
 void add_free_map_managers(){
   if(free_page_map_managers.next){
-    sprint("Needn't add free_page_map_managers\n");
+    log("Needn't add free_page_map_managers\n");
     return;
   }
   page_map_mananger *new_managers=(page_map_mananger*)alloc_page();
@@ -240,7 +240,7 @@ void kern_vm_init(void) {
   kern_vm_map(t_page_dir, KERN_BASE, DRAM_BASE, (uint64)_etext - KERN_BASE,
          prot_to_type(PROT_READ | PROT_EXEC, 0));
 
-  sprint("KERN_BASE 0x%lx\n", lookup_pa(t_page_dir, KERN_BASE));
+  log("KERN_BASE 0x%lx\n", lookup_pa(t_page_dir, KERN_BASE));
 
   // also (direct) map remaining address space, to make them accessable from kernel.
   // this is important when kernel needs to access the memory content of user's app
@@ -248,7 +248,7 @@ void kern_vm_init(void) {
   kern_vm_map(t_page_dir, (uint64)_etext, (uint64)_etext, PHYS_TOP - (uint64)_etext,
          prot_to_type(PROT_READ | PROT_WRITE, 0));
 
-  sprint("physical address of _etext is: 0x%lx\n", lookup_pa(t_page_dir, (uint64)_etext));
+  log("physical address of _etext is: 0x%lx\n", lookup_pa(t_page_dir, (uint64)_etext));
 
   g_kernel_pagetable = t_page_dir;
 }
@@ -310,7 +310,7 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
     if(m)count=map_manager_count_decrease(m);
     if(free){
       if(!count||free==ENFORCE){
-        if(count)sprint("Warrning! Freeing page which is mapped by other process may be not safe!\n");
+        if(count)log("Warrning! Freeing page which is mapped by other process may be not safe!\n");
         if(m)page_map_hash_erase(m);
         if(pa)free_page(pa);
       }
@@ -320,7 +320,7 @@ void user_vm_unmap(pagetable_t page_dir, uint64 va, uint64 size, int free) {
 }
 
 void __user_vm_unmap_with_cow(pagetable_t page_dir, uint64 va, uint64 size) {
-  sprint("va: %p size: %d\n",va,size);
+  // log("va: %p size: %d\n",va,size);
   for (uint64 first = ROUNDDOWN(va, PGSIZE), last = ROUNDDOWN(va + size - 1, PGSIZE);
       first <= last; first += PGSIZE) {
     // sprint("first:%p\n",first);
@@ -335,16 +335,16 @@ void __user_vm_unmap_with_cow(pagetable_t page_dir, uint64 va, uint64 size) {
 // debug function, print the vm space of a process. added @lab3_1
 //
 void print_proc_vmspace(process* proc) {
-  sprint( "======\tbelow is the vm space of process%d\t========\n", proc->pid );
+  log( "======\tbelow is the vm space of process%d\t========\n", proc->pid );
   for( int i=0; i<proc->total_mapped_region; i++ ){
-    sprint( "-va:%lx, npage:%d, ", proc->mapped_info[i].va, proc->mapped_info[i].npages);
+    log( "-va:%lx, npage:%d, ", proc->mapped_info[i].va, proc->mapped_info[i].npages);
     switch(proc->mapped_info[i].seg_type){
-      case CODE_SEGMENT: sprint( "type: CODE SEGMENT" ); break;
-      case DATA_SEGMENT: sprint( "type: DATA SEGMENT" ); break;
-      case STACK_SEGMENT: sprint( "type: STACK SEGMENT" ); break;
-      case CONTEXT_SEGMENT: sprint( "type: TRAPFRAME SEGMENT" ); break;
-      case SYSTEM_SEGMENT: sprint( "type: USER KERNEL STACK SEGMENT" ); break;
+      case CODE_SEGMENT: log( "type: CODE SEGMENT" ); break;
+      case DATA_SEGMENT: log( "type: DATA SEGMENT" ); break;
+      case STACK_SEGMENT: log( "type: STACK SEGMENT" ); break;
+      case CONTEXT_SEGMENT: log( "type: TRAPFRAME SEGMENT" ); break;
+      case SYSTEM_SEGMENT: log( "type: USER KERNEL STACK SEGMENT" ); break;
     }
-    sprint( ", mapped to pa:%lx\n", lookup_pa(proc->pagetable, proc->mapped_info[i].va) );
+    log( ", mapped to pa:%lx\n", lookup_pa(proc->pagetable, proc->mapped_info[i].va) );
   }
 }

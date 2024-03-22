@@ -7,6 +7,7 @@
 #include "kernel/config.h"
 #include "spike_interface/spike_utils.h"
 #include "kernel/sync_utils.h"
+#include "kernel/vfs.h"
 
 //
 // global variables are placed in the .data section.
@@ -44,11 +45,11 @@ static int barrier=0;
 void init_dtb(uint64 dtb) {
   // defined in spike_interface/spike_htif.c, enabling Host-Target InterFace (HTIF)
   query_htif(dtb);
-  if (htif) sprint("HTIF is available!\r\n");
+  if (htif) log("HTIF is available!\r\n");
 
   // defined in spike_interface/spike_memory.c, obtain information about emulated memory
   query_mem(dtb);
-  sprint("(Emulated) memory size: %ld MB\n", g_mem_size >> 20);
+  log("(Emulated) memory size: %ld MB\n", g_mem_size >> 20);
 }
 
 //
@@ -59,7 +60,7 @@ static void delegate_traps() {
   // supports_extension macro is defined in kernel/riscv.h
   if (!supports_extension('S')) {
     // confirm that our processor supports supervisor mode. abort if it does not.
-    sprint("S mode is not supported.\n");
+    log("S mode is not supported.\n");
     return;
   }
 
@@ -108,7 +109,7 @@ void m_start(uintptr_t hartid, uintptr_t dtb) {
 
   sync_barrier(&barrier,NCPU);
 
-  sprint("In m_start, hartid:%d\n", hartid);
+  log("In m_start, hartid:%d\n", hartid);
 
   write_tp(hartid);
 

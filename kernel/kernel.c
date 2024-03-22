@@ -28,7 +28,6 @@ static int s_start_barrier=0;
 
 bool __shutdown[NCPU];
 
-spike_file_t *log[NCPU];
 //
 // turn on paging. added @lab2_1
 //
@@ -74,7 +73,7 @@ process* load_user_program() {
   process* proc;
 
   proc = alloc_process();
-  sprint("%d>>>User application is loading.\n",read_tp());
+  log("User application is loading.\n");
 
   arg_buf arg_bug_msg;
 
@@ -105,8 +104,6 @@ int s_start(void) {
     // init phisical memory manager
     pmm_init();
 
-    spike_file_mkdir(LOG_DIR_PATH, 0775);
-
     vm_map_managers_init();
 
     // build the kernel page table
@@ -116,6 +113,8 @@ int s_start(void) {
 
     // init file system, added @lab4_1
     fs_init();
+
+    vfs_mkdir(LOG_DIR_PATH);
 
   }
 
@@ -128,22 +127,25 @@ int s_start(void) {
   
   strprint(log_path,"%s/log%d.txt",LOG_DIR_PATH,tp);
 
-  log[tp]=spike_file_open(log_path,O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-  if(log[tp])sprint("ERROR: CONNOT OPEN LOG%d\n",tp);
+  vfs_unlink(log_path);
 
-  sprint(log_path);
+  log_file[tp]=vfs_open(log_path,O_RDWR | O_CREAT);
+  if(!log_file[tp])sprint("ERROR: CONNOT OPEN LOG%d\n",tp);
+
+  // sprint(log_path);
 
   // the code now formally works in paging mode, meaning the page table is now in use.
-  sprint("%d>>>kernel page table is on \n",read_tp());
+  log("kernel page table is on \n");
 
   // added @lab3_1
   init_proc_pool();
 
   vm_alloc_stage[tp]=1;
 
-  sprint("%d>>>Switch to user mode...\n",read_tp());
+  log("Switch to user mode...\n");
   // the application code (elf) is first loaded into memory, and then put into execution
   // added @lab3_1
+  sprint("\n====================== Start ======================\n\n");
   insert_to_ready_queue( load_user_program() );
   schedule();
 
