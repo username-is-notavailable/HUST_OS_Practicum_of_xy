@@ -16,6 +16,7 @@
 #include "rfs.h"
 #include "ramdev.h"
 #include "sync_utils.h"
+#include "util/string.h"
 
 //
 // trap_sec_start points to the beginning of S-mode trap segment (i.e., the entry point of
@@ -26,6 +27,8 @@ extern char trap_sec_start[];
 static int s_start_barrier=0;
 
 bool __shutdown[NCPU];
+
+spike_file_t *log[NCPU];
 //
 // turn on paging. added @lab2_1
 //
@@ -102,8 +105,7 @@ int s_start(void) {
     // init phisical memory manager
     pmm_init();
 
-    // init file system, added @lab4_1
-    fs_init();
+    spike_file_mkdir(LOG_DIR_PATH, 0775);
 
     vm_map_managers_init();
 
@@ -111,12 +113,26 @@ int s_start(void) {
     kern_vm_init();
 
     for(int i=0;i<MAX_SEMAPHORES_NUM;i++)sems[i].is_aviliable=TRUE;
+
+    // init file system, added @lab4_1
+    fs_init();
+
   }
 
   sync_barrier(&s_start_barrier,NCPU);
 
   // now, switch to paging mode by turning on paging (SV39)
   enable_paging();
+
+  char log_path[256];
+  
+  strprint(log_path,"%s/log%d.txt",LOG_DIR_PATH,tp);
+
+  log[tp]=spike_file_open(log_path,O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+  if(log[tp])sprint("ERROR: CONNOT OPEN LOG%d\n",tp);
+
+  sprint(log_path);
+
   // the code now formally works in paging mode, meaning the page table is now in use.
   sprint("%d>>>kernel page table is on \n",read_tp());
 

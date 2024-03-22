@@ -263,6 +263,8 @@ int vfs_link(const char *oldpath, const char *newpath) {
   struct dentry *parent = vfs_root_dentry;
   char miss_name[MAX_PATH_LEN];
 
+  sprint("oldpath:%s newpath:%s\n",oldpath,newpath);
+
   // lookup oldpath
   struct dentry *old_file_dentry =
       lookup_final_dentry(oldpath, &parent, miss_name);
@@ -522,6 +524,7 @@ struct dentry *lookup_final_dentry(const char *path, struct dentry **parent,
   struct dentry *this = *parent;
 
   while (token != NULL) {
+    sprint("%s\n",token);
     *parent = this;
     if(!strcmp(token,"."))
       this=this;

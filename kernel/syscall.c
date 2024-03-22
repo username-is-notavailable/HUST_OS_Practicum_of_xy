@@ -20,6 +20,39 @@
 #include "spike_interface/spike_utils.h"
 #include "spike_interface/atomic.h"
 
+void *sys_read_user_mem(pagetable_t pagetable, void *va, uint64 size, bool read){
+  // sprint("sys_read_user_mem:va:%p %d\n",va,size);
+  if(((uint64)va)>>PGSHIFT==((uint64)va+size)>>PGSHIFT)return user_va_to_pa(pagetable,va);
+  void *buf=alloc_pages((size-1)/PGSIZE+1);
+  if(!buf)return NULL;
+  if(read){
+    int mem_size=ROUNDUP((uint64)va,PGSIZE)-(uint64)va;
+    for(int offset=0;offset<size;offset+=mem_size,mem_size=MIN(PGSIZE,size-offset)){
+      // sprint("size:%d offset:%d\n",mem_size,offset);
+      void *pa=user_va_to_pa(pagetable,va+offset);
+      if(!pa)return NULL;
+      memcpy(buf+offset,pa,mem_size);
+    }
+  }
+  return buf;
+}
+
+void sys_write_back_user_mem(pagetable_t pagetable, void *va, void *pa,uint64 size, bool write_back){
+  if(((uint64)va)>>PGSHIFT==((uint64)va+size)>>PGSHIFT)return ;
+  if(!pa)return ;
+  if(write_back){
+    int mem_size=ROUNDUP((uint64)va,PGSIZE)-(uint64)va;
+    for(int offset=0;offset<size;offset+=mem_size){
+      void *pa_page=user_va_to_pa(pagetable,va);
+      if(!pa_page)panic("sys_write_back_user_mem\n");
+      memcpy(pa+offset,pa_page,mem_size);
+      mem_size=MIN(PGSIZE,size-offset);
+    }
+  }
+  free_page(pa);
+  return;
+}
+
 //
 // implement the SYS_user_print syscall
 //
@@ -28,8 +61,9 @@ ssize_t sys_user_print(const char* buf, size_t n) {
   // so we have to transfer it into phisical address (kernel is running in direct mapping).
   uint64 tp=read_tp();
   assert( current[tp] );
-  char* pa = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)buf);
+  char* pa = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, n+1, TRUE);
   sprint("%d>>>%s",tp,pa);
+  sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, pa, n+1,FALSE);
   return 0;
 }
 
@@ -107,9 +141,12 @@ ssize_t sys_user_yield() {
 //
 // open file
 //
-ssize_t sys_user_open(char *pathva, int flags) {
-  char* pathpa = (char*)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), pathva);
-  return do_open(pathpa, flags);
+ssize_t sys_user_open(char *pathva, int flags, uint64 size) {
+  // char* pathpa = (char*)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), pathva);
+  char* pathpa = (char*)sys_read_user_mem((pagetable_t)(current[read_tp()]->pagetable), pathva, size, TRUE);
+  ssize_t ret=do_open(pathpa, flags);
+  sys_write_back_user_mem((pagetable_t)(current[read_tp()]->pagetable), pathva, pathpa, size, FALSE);
+  return ret;
 }
 
 //
@@ -155,16 +192,20 @@ ssize_t sys_user_lseek(int fd, int offset, int whence) {
 // read vinode
 //
 ssize_t sys_user_stat(int fd, struct istat *istat) {
-  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), istat);
-  return do_stat(fd, pistat);
+  struct istat * pistat = (struct istat *)sys_read_user_mem((pagetable_t)(current[read_tp()]->pagetable), istat, sizeof(struct istat),FALSE);
+  ssize_t ret = do_stat(fd, pistat);
+  sys_write_back_user_mem((pagetable_t)(current[read_tp()]->pagetable), istat, pistat, sizeof(struct istat),TRUE);
+  return ret;
 }
 
 //
 // read disk inode
 //
 ssize_t sys_user_disk_stat(int fd, struct istat *istat) {
-  struct istat * pistat = (struct istat *)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), istat);
-  return do_disk_stat(fd, pistat);
+  struct istat * pistat = (struct istat *)sys_read_user_mem((pagetable_t)(current[read_tp()]->pagetable), istat, sizeof(struct istat), FALSE);
+  ssize_t ret = do_disk_stat(fd, pistat);
+  sys_write_back_user_mem((pagetable_t)(current[read_tp()]->pagetable), istat , pistat, sizeof(struct istat), TRUE);
+  return ret;
 }
 
 //
@@ -177,25 +218,31 @@ ssize_t sys_user_close(int fd) {
 //
 // lib call to opendir
 //
-ssize_t sys_user_opendir(char * pathva){
-  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), pathva);
-  return do_opendir(pathpa);
+ssize_t sys_user_opendir(char * pathva, uint64 len){
+  char * pathpa = (char*)sys_read_user_mem((pagetable_t)(current[read_tp()]->pagetable), pathva,len,TRUE);
+  ssize_t ret = do_opendir(pathpa);
+  sys_write_back_user_mem((pagetable_t)(current[read_tp()]->pagetable), pathva,pathpa,len,FALSE);
+  return ret;
 }
 
 //
 // lib call to readdir
 //
 ssize_t sys_user_readdir(int fd, struct dir *vdir){
-  struct dir * pdir = (struct dir *)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), vdir);
-  return do_readdir(fd, pdir);
+  struct dir * pdir = (struct dir *)sys_read_user_mem((pagetable_t)(current[read_tp()]->pagetable), vdir, sizeof(struct dir), FALSE);
+  ssize_t ret = do_readdir(fd, pdir);
+  sys_write_back_user_mem((pagetable_t)(current[read_tp()]->pagetable), vdir, pdir, sizeof(struct dir), TRUE);
+  return ret;
 }
 
 //
 // lib call to mkdir
 //
-ssize_t sys_user_mkdir(char * pathva){
-  char * pathpa = (char*)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), pathva);
-  return do_mkdir(pathpa);
+ssize_t sys_user_mkdir(char * pathva, uint64 len){
+  char * pathpa = (char*)sys_read_user_mem((pagetable_t)(current[read_tp()]->pagetable), pathva,len,TRUE);
+  uint64 ret = do_mkdir(pathpa);
+  sys_write_back_user_mem((pagetable_t)(current[read_tp()]->pagetable), pathva,pathpa,len,FALSE);
+  return ret;
 }
 
 //
@@ -208,29 +255,45 @@ ssize_t sys_user_closedir(int fd){
 //
 // lib call to link
 //
-ssize_t sys_user_link(char * vfn1, char * vfn2){
+ssize_t sys_user_link(char * vfn1, char * vfn2, uint64 len1, uint64 len2){
   uint64 tp=read_tp();
-  char * pfn1 = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)vfn1);
-  char * pfn2 = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)vfn2);
-  return do_link(pfn1, pfn2);
+  // char * pfn1 = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)vfn1);
+  // char * pfn2 = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)vfn2);
+
+  char * pfn1 = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)vfn1, len1, TRUE);
+  char * pfn2 = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)vfn2, len2, TRUE);
+  
+  // sprint("va_s:%p va_e:%p\n",vfn2,vfn2+12);
+  // sprint("pa_s:%p pa_e:%p\n",pfn2,user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)vfn2+12));
+  uint64 ret = do_link(pfn1, pfn2);
+
+  sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)vfn1, (void*)pfn1, len1, FALSE);
+  sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)vfn2, (void*)pfn2, len2, FALSE);
+
+  return ret;
 }
 
 //
 // lib call to unlink
 //
-ssize_t sys_user_unlink(char * vfn){
-  char * pfn = (char*)user_va_to_pa((pagetable_t)(current[read_tp()]->pagetable), (void*)vfn);
-  return do_unlink(pfn);
+ssize_t sys_user_unlink(char * vfn, uint64 len){
+  char * pfn = (char*)sys_read_user_mem((pagetable_t)(current[read_tp()]->pagetable), (void*)vfn, len, TRUE);
+  uint64 ret = do_unlink(pfn);
+  sys_write_back_user_mem((pagetable_t)(current[read_tp()]->pagetable), (void*)vfn, (void*)pfn, len, FALSE);
+  return ret;
 }
 
 //
 // lib call to exec
 //
-ssize_t sys_user_exec(char * command, char *para){
+ssize_t sys_user_exec(char * command, uint64 clen, char *para, uint64 plen){
   uint64 tp=read_tp();
-  char * pcommand = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)command);
-  char * ppara = (char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)para);
-  return do_exec(pcommand,ppara);
+  char * pcommand = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)command, clen, TRUE);
+  char * ppara = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)para, plen, TRUE);
+  uint64 ret = do_exec(pcommand,ppara);
+  sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)command, pcommand, clen, FALSE);
+  sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)para, ppara, plen, FALSE);
+  return ret;
 }
 
 //
@@ -337,26 +400,30 @@ uint64 sys_user_sem_V(uint64 num){
 //
 //  get path
 //
-ssize_t sys_user_rcwd(char* path) {
+ssize_t sys_user_rcwd(char* path, uint64 len) {
   uint64 tp=read_tp();
-  path=(char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)path);
-  get_path(path, current[tp]->pfiles->cwd);
-  int len=strlen(path);
+  char *ppath=(char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, len, FALSE);
+  get_path(ppath, current[tp]->pfiles->cwd);
+  len=strlen(ppath);
   if(len>1)
-    path[len-1]=0;
+    ppath[len-1]=0;
+  sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, ppath, len, TRUE);
   return 0;
 }
 
 //
 //  change cwd
 //
-ssize_t sys_user_ccwd(char *path) {
+ssize_t sys_user_ccwd(char *path, uint64 len) {
   uint64 tp=read_tp();
   struct dentry *cwd=current[tp]->pfiles->cwd;
   char missname[MAX_DENTRY_NAME_LEN];
-  path=(char*)user_va_to_pa((pagetable_t)(current[tp]->pagetable), (void*)path);
-  if((cwd=lookup_final_dentry(path,&cwd,missname)))
-    current[tp]->pfiles->cwd=cwd;
+  char *ppath=(char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, len, TRUE);
+  // sprint(ppath);
+  if((cwd=lookup_final_dentry(ppath,&cwd,missname)))
+    {current[tp]->pfiles->cwd=cwd;
+    sprint("%p\n",cwd);}
+  sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, (void*)ppath, len, FALSE);
   return 0;
 }
 
@@ -387,7 +454,7 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_yield();
     // added @lab4_1
     case SYS_user_open:
-      return sys_user_open((char *)a1, a2);
+      return sys_user_open((char *)a1, a2, a3);
     case SYS_user_read:
       return sys_user_read(a1, (char *)a2, a3);
     case SYS_user_write:
@@ -402,20 +469,20 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_close(a1);
     // added @lab4_2
     case SYS_user_opendir:
-      return sys_user_opendir((char *)a1);
+      return sys_user_opendir((char *)a1,a2);
     case SYS_user_readdir:
       return sys_user_readdir(a1, (struct dir *)a2);
     case SYS_user_mkdir:
-      return sys_user_mkdir((char *)a1);
+      return sys_user_mkdir((char *)a1,a2);
     case SYS_user_closedir:
       return sys_user_closedir(a1);
     // added @lab4_3
     case SYS_user_link:
-      return sys_user_link((char *)a1, (char *)a2);
+      return sys_user_link((char *)a1, (char *)a2,a3,a4);
     case SYS_user_unlink:
-      return sys_user_unlink((char *)a1);
+      return sys_user_unlink((char *)a1,a2);
     case SYS_user_exec:
-      return sys_user_exec((char *)a1, (char *)a2);
+      return sys_user_exec((char *)a1, a2, (char *)a3, a4);
     case SYS_user_wait:
       return sys_user_wait(a1);
     case SYS_user_backtrace:
@@ -429,9 +496,9 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
     case SYS_user_sem_V:
       return sys_user_sem_V(a1);
     case SYS_user_rcwd:
-      return sys_user_rcwd((char*)a1);
+      return sys_user_rcwd((char*)a1, a2);
     case SYS_user_ccwd:
-      return sys_user_ccwd((char*)a1);
+      return sys_user_ccwd((char*)a1, a2);
     case SYS_reclaim_subprocess:
       return sys_reclaim_subprocess(a1);
     case SHOULD_SHUTDOWN:

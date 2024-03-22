@@ -19,4 +19,6 @@
 
 #define HASH_TABLE_PAGES 4
 
+#define LOG_DIR_PATH "/log"
+
 #endif

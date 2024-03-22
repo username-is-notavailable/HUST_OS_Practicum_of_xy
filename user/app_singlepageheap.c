@@ -4,16 +4,16 @@
  */
 
 #include "user_lib.h"
-//#include "util/string.h"
+#include "util/string.h"
 
 typedef unsigned long long uint64;
 
-char* strcpy(char* dest, const char* src) {
-  char* d = dest;
-  while ((*d++ = *src++))
-    ;
-  return dest;
-}
+// char* strcpy(char* dest, const char* src) {
+//   char* d = dest;
+//   while ((*d++ = *src++))
+//     ;
+//   return dest;
+// }
 int main(void) {
   
   char str[20] = "hello, world!!!";

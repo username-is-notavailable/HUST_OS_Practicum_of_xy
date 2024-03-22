@@ -223,6 +223,7 @@ int do_closedir(int fd) {
 // create hard link to a file
 //
 int do_link(char *oldpath, char *newpath) {
+  sprint("oldpath:%s newpath:%s\n",oldpath,newpath);
   return vfs_link(oldpath, newpath);
 }
 

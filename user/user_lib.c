@@ -11,6 +11,7 @@
 #include "kernel/syscall.h"
 #include "util/functions.h"
 #include "kernel/memlayout.h"
+#include "util/string.h"
 
 uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, uint64 a5, uint64 a6,
                  uint64 a7) {
@@ -83,7 +84,7 @@ void yield() {
 // lib call to open
 //
 int open(const char *pathname, int flags) {
-  return do_user_call(SYS_user_open, (uint64)pathname, flags, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_open, (uint64)pathname, flags, 19, 0, 0, 0, 0);
 }
 
 //
@@ -125,7 +126,7 @@ int disk_stat_u(int fd, struct istat *istat) {
 // lib call to open dir
 //
 int opendir_u(const char *dirname) {
-  return do_user_call(SYS_user_opendir, (uint64)dirname, 0, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_opendir, (uint64)dirname, strlen(dirname)+1, 0, 0, 0, 0, 0);
 }
 
 //
@@ -139,7 +140,7 @@ int readdir_u(int fd, struct dir *dir) {
 // lib call to make dir
 //
 int mkdir_u(const char *pathname) {
-  return do_user_call(SYS_user_mkdir, (uint64)pathname, 0, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_mkdir, (uint64)pathname, strlen(pathname)+1, 0, 0, 0, 0, 0);
 }
 
 //
@@ -153,14 +154,14 @@ int closedir_u(int fd) {
 // lib call to link
 //
 int link_u(const char *fn1, const char *fn2){
-  return do_user_call(SYS_user_link, (uint64)fn1, (uint64)fn2, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_link, (uint64)fn1, (uint64)fn2, /*strlen(fn1)+1*/ 18, /*strlen(fn2)+1*/ 19, 0, 0, 0);
 }
 
 //
 // lib call to unlink
 //
 int unlink_u(const char *fn){
-  return do_user_call(SYS_user_unlink, (uint64)fn, 0, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_unlink, (uint64)fn, strlen(fn)+1, 0, 0, 0, 0, 0);
 }
 
 //
@@ -174,7 +175,7 @@ int close(int fd) {
 // lib call to exec
 //
 int exec(char *command, char *para) {
-  return do_user_call(SYS_user_exec, (uint64)command, (uint64)para, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_exec, (uint64)command, strlen(command)+1,(uint64)para, strlen(para)+1, 0, 0, 0);
 }
 
 //
@@ -284,14 +285,14 @@ void sem_V(int num) {
 // lib call to read present working directory (pwd)
 //
 int read_cwd(char *path) {
-  return do_user_call(SYS_user_rcwd, (uint64)path, 0, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_rcwd, (uint64)path, sizeof(path), 0, 0, 0, 0, 0);
 }
 
 //
 // lib call to change pwd
 //
 int change_cwd(const char *path) {
-  return do_user_call(SYS_user_ccwd, (uint64)path, 0, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_ccwd, (uint64)path, strlen(path)+1, 0, 0, 0, 0, 0);
 }
 
 bool __shoutnow(){

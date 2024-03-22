@@ -4,6 +4,8 @@
 
 #include <ctype.h>
 #include <stdint.h>
+#include <stdarg.h>
+#include "snprintf.h"
 
 void* memcpy(void* dest, const void* src, size_t len) {
   const char* s = src;
@@ -148,4 +150,15 @@ char* safestrcpy(char* s, const char* t, int n) {
     ;
   *s = 0;
   return os;
+}
+
+
+int strprint(char *des, const char* s, ...){
+  va_list vl;
+  va_start(vl, s);
+
+  int ret=vsnprintf(des,256,s,vl);
+
+  va_end(vl);
+  return ret;
 }

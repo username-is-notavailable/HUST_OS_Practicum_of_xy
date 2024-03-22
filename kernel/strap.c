@@ -90,7 +90,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
         void *pa;
         for(uint64 i=vist_page_va;i<current[tp]->mapped_info[STACK_SEGMENT].va;i+=PGSIZE){
           if((pa=alloc_page())==NULL)panic("handle page fault!\n");
-          user_vm_map(current[tp]->pagetable,i,PGSIZE,(uint64)i,prot_to_type(PROT_WRITE | PROT_READ, 1));
+          user_vm_map(current[tp]->pagetable,i,PGSIZE,(uint64)pa,prot_to_type(PROT_WRITE | PROT_READ, 1));
         }
         current[tp]->mapped_info[STACK_SEGMENT].va=vist_page_va;
       }
