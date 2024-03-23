@@ -125,7 +125,7 @@ int s_start(void) {
 
   char log_path[256];
   
-  strprint(log_path,"%s/log%d.txt",LOG_DIR_PATH,tp);
+  strprint(log_path,"%s/hart%d.log",LOG_DIR_PATH,tp);
 
   vfs_unlink(log_path);
 
