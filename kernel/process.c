@@ -38,10 +38,10 @@ process* current[NCPU];
 
 semaphores sems[MAX_SEMAPHORES_NUM];
 
-process* init_pid[NCPU];
+process* init_proc[NCPU]={NULL};
 
 int register_init_process(){
-  init_pid[read_tp()]=current[read_tp()];
+  init_proc[read_tp()]=current[read_tp()];
   return current[read_tp()]->pid;
 }
 
@@ -190,6 +190,7 @@ int free_process( process* proc ) {
   // since proc can be current process, and its user kernel stack is currently in use!
   // but for proxy kernel, it (memory leaking) may NOT be a really serious issue,
   // as it is different from regular OS, which needs to run 7x24.
+  uint64 tp=read_tp();
   process *parent = proc->parent;
   proc->status = ZOMBIE;
   if(parent){
@@ -198,6 +199,21 @@ int free_process( process* proc ) {
     if((proc->parent->waiting_for_child==proc->pid||proc->parent->waiting_for_child==-1)){
       parent->trapframe->regs.a0=proc->pid;
       insert_to_ready_queue(proc->parent);
+    }
+    if(init_proc[tp]){
+      process *p=proc->children;
+      while(p)p->parent=init_proc[tp],p=p->sibling;
+      if(p){
+        p->sibling=init_proc[tp]->children;
+        init_proc[tp]->children=proc->children;
+      }
+      p=proc->zombie_children;
+      while(p)p->parent=init_proc[tp],p=p->sibling;
+      if(p){
+        p->sibling=init_proc[tp]->zombie_children;
+        init_proc[tp]->zombie_children=proc->zombie_children;
+        if (init_proc[tp]->waiting_for_child==-1)insert_to_ready_queue(init_proc[tp]);
+      }
     }
   }
   return 0;
@@ -481,6 +497,8 @@ int do_sys_reclaim_subprocess(int pid){
   spinlock_lock(&procs_status_lock);
   p->status=FREE;
   spinlock_unlock(&procs_status_lock);
+
+  current[tp]->waiting_for_child=0;
 
   return pid;
 }
