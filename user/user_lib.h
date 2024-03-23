@@ -8,13 +8,6 @@
 #include "kernel/proc_file.h"
 // #include "util/string.h"
 
-typedef struct mem_node_t
-{
-    uint64 size;
-    void *next;
-}mem_node;
-
-
 int printu(const char *s, ...);
 int exit(int code);
 void* naive_malloc();
@@ -61,5 +54,7 @@ void register_init();
 char getch();
 
 bool __shoutnow();
+
+extern bool print_tp;
 
 #endif

@@ -7,10 +7,10 @@
 int get_input(char *buf);
 
 int main(int arg, char *argv[]){
-    char *input_buf[SHELL_BUF_MAX];
+    char input_buf[SHELL_BUF_MAX];
     bool shutdown=FALSE;
     while (!shutdown){
-        
+        get_input(input_buf);
     }
 }
 

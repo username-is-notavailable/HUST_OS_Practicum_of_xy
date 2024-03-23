@@ -13,6 +13,12 @@
 #include "kernel/memlayout.h"
 #include "util/string.h"
 
+typedef struct mem_node_t
+{
+    uint64 size;
+    void *next;
+}mem_node;
+
 uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, uint64 a5, uint64 a6,
                  uint64 a7) {
   int ret;
@@ -29,6 +35,8 @@ uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, u
   return ret;
 }
 
+
+bool print_tp=FALSE;
 //
 // printu() supports user/lab1_1_helloworld.c
 //
@@ -43,7 +51,7 @@ int printu(const char* s, ...) {
   size_t n = res < sizeof(out) ? res : sizeof(out);
 
   // make a syscall to implement the required functionality.
-  return do_user_call(SYS_user_print, (uint64)buf, n, 0, 0, 0, 0, 0);
+  return do_user_call(SYS_user_print, (uint64)buf, n, print_tp, 0, 0, 0, 0);
 }
 
 //
