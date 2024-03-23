@@ -749,14 +749,17 @@ char* get_path(char *path, struct dentry* p_dentry) {
 
 struct file_system_type *fs_list[MAX_SUPPORTED_FS];
 
+int log_mode=TO_FILE_SYSTEM;
+
 void log(const char *s,...){
+  if(log_mode==NO_LOG)return;
   va_list vl;
   va_start(vl, s);
 
   char out[256];
   int res = vsnprintf(out, sizeof(out), s, vl);
   //you need spike_file_init before this call
-  if(log_file[read_tp()])vfs_write(log_file[read_tp()], out, res < sizeof(out) ? res : sizeof(out));
-  else spike_file_write(stderr, out, res < sizeof(out) ? res : sizeof(out));
+  if(log_file[read_tp()]&&log_mode==TO_FILE_SYSTEM)vfs_write(log_file[read_tp()], out, res < sizeof(out) ? res : sizeof(out));
+  else sprint("%d>>>%s",read_tp(),out);
   va_end(vl);
 }

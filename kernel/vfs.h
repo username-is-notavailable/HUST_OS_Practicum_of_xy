@@ -213,6 +213,14 @@ char *get_path(char* path, struct dentry *p_dentry);
 
 extern struct file *log_file[NCPU];
 
+enum LOG_MODE{
+  TO_CONSOLE,
+  TO_FILE_SYSTEM,
+  NO_LOG
+};
+
+extern int log_mode;
+
 void log(const char *s,...);
 
 #endif

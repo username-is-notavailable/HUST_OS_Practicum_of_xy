@@ -116,6 +116,8 @@ int s_start(void) {
 
     vfs_mkdir(LOG_DIR_PATH);
 
+    char log_config_path[256];
+
   }
 
   sync_barrier(&s_start_barrier,NCPU);
