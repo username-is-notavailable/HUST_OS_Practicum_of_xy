@@ -5,7 +5,7 @@
 #include "util/types.h"
 #include "util/string.h"
 
-#define INFO(cwd)  (printu("myshell:%s$ ",(cwd)))
+#define INFO(cwd)  (printu("\033[32mmyshell\033[0m:\033[34m%s\033[0m$ ",(cwd)))
 
 #define add_global_var(name, value) __global_variables.virtual_hash_put(&__global_variables,(name),(value))
 #define delete_global_var(name) __global_variables.virtual_hash_erase(&__global_variables,(name))
@@ -323,6 +323,15 @@ void do_command(char *command){
         // printu("name:%s\n",name);
         if(get_global_var(name))delete_global_var(name);
         add_global_var(name,value);
+    }
+    else if(!strcmp(word,"cd")){
+        word=get_string(words);
+        if(!word){
+            printu("too few args!\n");
+            free_parse_str(words);
+            return;
+        }
+        change_cwd(word);
     }
     else{
         char path[256];

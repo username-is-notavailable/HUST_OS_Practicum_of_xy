@@ -360,6 +360,8 @@ int do_fork( process* parent)
   child->symbols_names=parent->symbols_names;
   (*(((uint64*)child->symbols_names)-1))++;
 
+  child->pfiles->cwd=parent->pfiles->cwd;
+
   insert_to_ready_queue( child );
 
   return child->pid;
