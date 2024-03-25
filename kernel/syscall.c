@@ -56,16 +56,15 @@ void sys_write_back_user_mem(pagetable_t pagetable, void *va, void *pa,uint64 si
 //
 // implement the SYS_user_print syscall
 //
-ssize_t sys_user_print(const char* buf, size_t n, bool print_tp) {
+ssize_t sys_user_print(const char* buf, size_t n) {
   // buf is now an address in user space of the given app's user stack,
   // so we have to transfer it into phisical address (kernel is running in direct mapping).
   uint64 tp=read_tp();
   assert( current[tp] );
   char* pa = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, n+1, TRUE);
-  if(print_tp)sprint("%d>>>",tp);
   sprint(pa);
   sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, pa, n+1,FALSE);
-  return 0;
+  return n;
 }
 
 //
@@ -289,8 +288,10 @@ ssize_t sys_user_unlink(char * vfn, uint64 len){
 //
 ssize_t sys_user_exec(char * command, uint64 clen, char *para, uint64 plen){
   uint64 tp=read_tp();
+  // sprint("!!!!!!!!\n");
   char * pcommand = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)command, clen, TRUE);
   char * ppara = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)para, plen, TRUE);
+  // sprint("%s\n",ppara);
   uint64 ret = do_exec(pcommand,ppara);
   sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)command, pcommand, clen, FALSE);
   sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)para, ppara, plen, FALSE);
@@ -440,7 +441,7 @@ extern bool __shutdown[NCPU];
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7) {
   switch (a0) {
     case SYS_user_print:
-      return sys_user_print((const char*)a1, a2, a3);
+      return sys_user_print((const char*)a1, a2);
     case SYS_user_exit:
       return sys_user_exit(a1);
     // added @lab2_2

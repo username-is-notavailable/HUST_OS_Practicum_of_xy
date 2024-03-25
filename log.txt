@@ -1,127 +1,15 @@
-HTIF is available!
-(Emulated) memory size: 2048 MB
-In m_start, hartid:0
+0>>>HTIF is available!
+0>>>(Emulated) memory size: 2048 MB
+0>>>In m_start, hartid:0
 hartid = 0: Enter supervisor mode...
 0>>>PKE kernel start 0x0000000080000000, PKE kernel end: 0x0000000080016000, PKE kernel size: 0x0000000000016000 .
 0>>>free physical memory address: [0x0000000080016000, 0x0000000087ffffff] 
 0>>>kernel memory manager is initializing ...
-KERN_BASE 0x0000000080000000
-physical address of _etext is: 0x000000008000d000
-RAMDISK0: base address of RAMDISK0 is: 0x00000000801ed000
-RFS: format RAMDISK0 done!
-free>>>0x0000000080272000
-hash_get:0x0000000080272000
-0x00000000801743f0
-log
-vfs_mkdir: the directory already exists!
-log
-log0.txt
-free>>>0x000000008027d000
-hash_get:0x000000008027d000
-0x00000000801742e8
-free>>>0x0000000080281000
-hash_get:0x0000000080281000
-0x0000000080174288
-free>>>0x000000008027c000
-hash_get:0x000000008027c000
-0x0000000080174300
-log
-log0.txt
-free>>>0x000000008027c000
-hash_get:0x000000008027c000
-0x0000000080174300
-ERROR: CONNOT OPEN LOG0
-/log/log0.txt0>>>kernel page table is on 
-0>>>Switch to user mode...
-0>>>in alloc_proc. user frame 0x0000000080286000, user stack 0x000000007ffff000, user kstack 0x0000000080289000 
-0>>>FS: created a file management struct for a process.
-0>>>in alloc_proc. build proc_file_management successfully.
-0>>>User application is loading.
-0>>>Application: /bin/app_wait
-bin
-app_wait
-0>>>CODE_SEGMENT added at mapped info offset:4
-0>>>DATA_SEGMENT added at mapped info offset:5 va:0x0000000000011000 npages:1
-free>>>0x000000008029a000
-hash_get:0x000000008029a000
-0x0000000080174030
-free>>>0x0000000080295000
-hash_get:0x0000000080295000
-0x00000000801740a8
-free>>>0x0000000080298000
-hash_get:0x0000000080298000
-0x0000000080174060
-free>>>0x0000000080296000
-hash_get:0x0000000080296000
-0x0000000080174090
-0>>>Application program entry point (virtual address): 0x00000000000100e8
-0>>>going to insert process 0 to ready queue.
-0>>>going to schedule process 0 to run.
-0>>>User call fork.
-0>>>DATA: va 0x0000000000011000 npages 1
-0>>>will fork a child from parent 0.
-0>>>in alloc_proc. user frame 0x0000000080295000, user stack 0x000000007ffff000, user kstack 0x0000000080299000 
-0>>>FS: created a file management struct for a process.
-0>>>in alloc_proc. build proc_file_management successfully.
-0>>>do_fork map code segment at pa:000000008029c000 of parent to child at va:0000000000010000.
-0>>>DATA: va 0x0000000000011000 npages 1
-0>>>do_fork map data segment at pa:00000000802a0000 of parent to child at va:0000000000011000.
-0>>>going to insert process 1 to ready queue.
-0>>>going to schedule process 1 to run.
-0>>>handle_page_fault: 0000000000011e10
-0>>>page_pa:0x00000000802b2000
-0>>>User call fork.
-0>>>DATA: va 0x0000000000011000 npages 1
-0>>>will fork a child from parent 1.
-0>>>in alloc_proc. user frame 0x00000000802b3000, user stack 0x000000007ffff000, user kstack 0x00000000802b6000 
-0>>>FS: created a file management struct for a process.
-0>>>in alloc_proc. build proc_file_management successfully.
-0>>>do_fork map code segment at pa:000000008029c000 of parent to child at va:0000000000010000.
-0>>>DATA: va 0x0000000000011000 npages 1
-0>>>do_fork map data segment at pa:00000000802b2000 of parent to child at va:0000000000011000.
-0>>>going to insert process 2 to ready queue.
-0>>>going to schedule process 2 to run.
-0>>>handle_page_fault: 0000000000011e10
-0>>>page_pa:0x00000000802c0000
-0>>>Grandchild process end, flag = 2.
-0>>>User pid:2 exit with code:0.
-0>>>going to insert process 1 to ready queue.
-0>>>going to schedule process 1 to run.
-0>>>pid:2
-free>>>0x00000000802b6000
-hash_get:0x00000000802b6000
-0x000000008029ee10
-free>>>0x00000000802bd000
-hash_get:0x00000000802bd000
-0x000000008029ed68
-va: 0x0000000000400000 size: 0
-va: 0x0000000000011000 size: 4096
-free>>>0x00000000802b7000
-hash_get:0x00000000802b7000
-0x000000008029edf8
-free>>>0x00000000802b4000
-hash_get:0x00000000802b4000
-0x000000008029ee40
-0>>>Child process end, flag = 1.
-0>>>User pid:1 exit with code:0.
-0>>>going to insert process 0 to ready queue.
-0>>>going to schedule process 0 to run.
-0>>>pid:1
-free>>>0x0000000080299000
-hash_get:0x0000000080299000
-0x0000000080174048
-free>>>0x00000000802af000
-hash_get:0x00000000802af000
-0x000000008029eeb8
-va: 0x0000000000400000 size: 0
-va: 0x0000000000011000 size: 4096
-free>>>0x00000000802a9000
-hash_get:0x00000000802a9000
-0x000000008029ef48
-free>>>0x0000000080296000
-hash_get:0x0000000080296000
-0x0000000080174060
-0>>>Parent process end, flag = 0.
-0>>>User pid:0 exit with code:0.
-no more ready processes, system shutdown now.
-System is shutting down with exit code 0.
+0>>>KERN_BASE 0x0000000080000000
+0>>>physical address of _etext is: 0x000000008000d000
+0>>>RAMDISK0: base address of RAMDISK0 is: 0x00000000801ed000
+0>>>RFS: format RAMDISK0 done!
+0>>>vfs_mkdir: the directory already exists!
+
+====================== Start ======================
+

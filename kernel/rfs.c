@@ -800,8 +800,14 @@ int rfs_readdir(struct dentry *dir_dentry, struct dir *dir, int *offset) {
   // dir->name and dir->inum.
   // note: DO NOT DELETE CODE BELOW PANIC.
   // panic("You need to implement the code for reading a directory entry of rfs in lab4_2.\n" );
+  // struct dentry *temp_dentry=alloc_vfs_dentry(p_direntry->name,NULL,dir_dentry);
+  // struct vinode *temp_node=rfs_lookup(dir_dentry->dentry_inode,temp_dentry);
+  struct rfs_device *rdev = rfs_device_list[dir_dentry->dentry_inode->sb->s_dev->dev_id];
   dir->inum=p_direntry->inum;
   strcpy(dir->name, p_direntry->name);
+  struct rfs_dinode *dinode=rfs_read_dinode(rdev,p_direntry->inum);
+  dir->type=dinode->type;
+  free_page(dinode);
   // DO NOT DELETE CODE BELOW.
   (*offset)++;
   return 0;
@@ -819,6 +825,7 @@ struct vinode *rfs_mkdir(struct vinode *parent, struct dentry *sub_dentry) {
   int free_inum = 0;
   for (int i = 0; i < (RFS_BLKSIZE / RFS_INODESIZE * RFS_MAX_INODE_BLKNUM); i++) {
     free_dinode = rfs_read_dinode(rdev, i);
+    sprint("mldir_rdev:%p\n",rdev);
     if (free_dinode->type == R_FREE) {  // found
       free_inum = i;
       break;

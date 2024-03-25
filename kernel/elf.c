@@ -63,11 +63,12 @@ elf_status elf_init(elf_ctx *ctx, void *info) {
 static int64 elf_alloc_mb_and_load(elf_ctx *ctx, elf_prog_header *ph_addr, uint64 perm) {
   elf_info *msg = (elf_info *)ctx->info;
   void *pa=NULL;
-  uint64 offset_in_page,pages=0, size_per_page;
-
+  uint64 offset_in_page=ph_addr->vaddr%PGSIZE,pages=0, load_size=MIN(ph_addr->memsz,PGSIZE-offset_in_page);
+  // log("size is %d\noff %d\n",ph_addr->memsz,ph_addr->off);
   for(uint64 offset=0;offset<ph_addr->memsz;
-    offset=ROUNDUP(ph_addr->vaddr+offset+1,PGSIZE)-ph_addr->vaddr, pages++){
+    offset+=load_size, pages++){
     if(!(pa=(void*)lookup_pa((pagetable_t)msg->p->pagetable,ph_addr->vaddr+offset))){
+      log("alloc_page\n");
       pa = alloc_page();
       if (pa == 0) panic("uvmalloc mem alloc falied\n");
 
@@ -75,10 +76,14 @@ static int64 elf_alloc_mb_and_load(elf_ctx *ctx, elf_prog_header *ph_addr, uint6
 
       user_vm_map((pagetable_t)msg->p->pagetable, ROUNDDOWN(ph_addr->vaddr+offset,PGSIZE), PGSIZE, (uint64)pa, perm);
     }
-    offset_in_page=offset%PGSIZE;
-    size_per_page=MIN(PGSIZE-offset_in_page,ph_addr->memsz-offset);
-    if (elf_fpread(ctx, pa+offset_in_page, size_per_page, ph_addr->off+offset) != size_per_page)
+    // offset_in_page=offset%PGSIZE;
+    // size_per_page=MIN(PGSIZE-offset_in_page,ph_addr->memsz-offset);
+    if (elf_fpread(ctx, pa+offset_in_page, load_size, ph_addr->off+offset) != load_size)
     return -1;
+    load_size=MIN(PGSIZE,ph_addr->memsz-offset);
+    offset_in_page=0;
+    // log("%d %d %p %p\n",*(int*)(pa+offset_in_page),*(int*)user_va_to_pa((pagetable_t)msg->p->pagetable,(void*)(ph_addr->vaddr+offset)),ROUNDDOWN(ph_addr->vaddr+offset,PGSIZE),ph_addr->vaddr+offset);
+    // log("%d %d\n",offset_in_page,offset);
   }
   
   return pages;
@@ -244,9 +249,11 @@ elf_status elf_load(elf_ctx *ctx) {
     // read segment headers
     if (elf_fpread(ctx, (void *)&ph_addr, sizeof(ph_addr), off) != sizeof(ph_addr)) return EL_EIO;
 
+    log("ph_addr:type:%d va:%p va_end:%p size: %d\n",ph_addr.type , ph_addr.vaddr,ph_addr.vaddr+ph_addr.memsz,ph_addr.memsz);
+
     if (ph_addr.type != ELF_PROG_LOAD) continue;
-    if (ph_addr.memsz < ph_addr.filesz) return EL_ERR;
-    if (ph_addr.vaddr + ph_addr.memsz < ph_addr.vaddr) return EL_ERR;
+    // if (ph_addr.memsz < ph_addr.filesz) return EL_ERR;
+    // if (ph_addr.vaddr + ph_addr.memsz < ph_addr.vaddr) return EL_ERR;
 
     // allocate memory block before elf loading
     int64 page_num=0;
@@ -265,7 +272,7 @@ elf_status elf_load(elf_ctx *ctx) {
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].npages = page_num;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[CODE_SEGMENT].va = ROUNDDOWN(ph_addr.vaddr,PGSIZE);
 
-      log( "CODE_SEGMENT added at mapped info offset:%d\n", CODE_SEGMENT );
+      log( "CODE_SEGMENT added at mapped info offset:%d pages:%d\n", CODE_SEGMENT ,page_num);
     }else if ( ph_addr.flags == (SEGMENT_READABLE|SEGMENT_WRITABLE) ){
       if((page_num=elf_alloc_mb_and_load(ctx,&ph_addr,prot_to_type(PROT_WRITE|PROT_READ, 1)))<0)return EL_EIO;
       ((process*)(((elf_info*)(ctx->info))->p))->mapped_info[DATA_SEGMENT].seg_type = DATA_SEGMENT;

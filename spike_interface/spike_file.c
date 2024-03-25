@@ -69,9 +69,12 @@ ssize_t spike_file_write(spike_file_t* f, const void* buf, size_t size) {
   return frontend_syscall(HTIFSYS_write, f->kfd, (uint64)buf, size, 0, 0, 0, 0);
 }
 
-int spike_file_readdir(char *path, char *d_name, int *offset){
+int spike_file_readdir(char *path, char *d_name, int *offset, char *type){
   // sprint("spike_file_readdir:path:%s offset:%d\n",path,*offset);
-  return frontend_syscall(HTIFSYS_readdir,(uint64)path,strlen(path)+1,(uint64)d_name,(*offset)++,0,0,0);
+  int ret = frontend_syscall(HTIFSYS_readdir,(uint64)path,strlen(path)+1,(uint64)d_name,(*offset)++,(uint64)type,0,0);
+  if (*type==8||*type==10)*type=FILE_I;
+  else if (*type==4)*type=DIR_I;
+  return ret;
 }
 
 static spike_file_t* spike_file_get_free(void) {

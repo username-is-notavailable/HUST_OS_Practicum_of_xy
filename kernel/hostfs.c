@@ -257,7 +257,8 @@ int hostfs_readdir(struct dentry *dir_dentry, struct dir *dir, int *offset) {
   char path[30];
   get_path_string(path,dir_dentry);
   // sprint(">>>>>>>>>>>>%s %p\n",path,dir->name);
-  return spike_file_readdir(path, dir->name, offset);
+  dir->inum=-1;
+  return spike_file_readdir(path, dir->name, offset, &dir->type);
   // return -1;
 }
 

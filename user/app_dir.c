@@ -17,10 +17,10 @@ void ls(char *path) {
     if (strlen(dir.name) < width) {
       strcpy(name, dir.name);
       name[strlen(dir.name)] = ' ';
-      printu("%s %d\n", name, dir.inum);
+      printu("%s %d %d\n", name, dir.inum,dir.type);
     }
     else
-      printu("%s %d\n", dir.name, dir.inum);
+      printu("%s %d %d\n", dir.name, dir.inum,dir.type);
   }
   printu("------------------------------\n");
   closedir_u(dir_fd);
@@ -65,18 +65,18 @@ int main(int argc, char *argv[]) {
 
   ls("/");
 
-  // // try to write a file in the new dir
-  // printu("write: /sub_dir/ramfile\n");
+  // try to write a file in the new dir
+  printu("write: /sub_dir/ramfile\n");
 
-  // fd = open("/sub_dir/ramfile", O_RDWR | O_CREAT);
-  // printu("file descriptor fd: %d\n", fd);
+  fd = open("/sub_dir/ramfile", O_RDWR | O_CREAT);
+  printu("file descriptor fd: %d\n", fd);
 
-  // write_u(fd, str, strlen(str));
-  // printu("write content: \n%s\n", str);
+  write_u(fd, str, strlen(str));
+  printu("write content: \n%s\n", str);
 
-  // close(fd);
+  close(fd);
 
-  // ls("/sub_dir");
+  ls("/sub_dir");
 
   printu("\n======== Test 4: rm file ========\n");
 
@@ -84,9 +84,11 @@ int main(int argc, char *argv[]) {
   // mkdir_u("/sub_dir");
   printu("rm: /sub_dir/ramfile\n");
 
-  if(unlink_u("/sub_dir")!=0)printu("!!!!!!\n");
+  int temp;
+  if((temp=unlink_u("/sub_dir/ramfile"))!=0)printu("!!!!!!%d\n",temp);
+  ls("/sub_dir/");
+  // if((temp=unlink_u("/sub_dir"))!=0)printu("!!!!!!%d\n",temp);
 
-  ls("/");
 
   printu("\nAll tests passed!\n\n");
   exit(0);

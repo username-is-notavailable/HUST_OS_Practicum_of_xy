@@ -7,6 +7,31 @@
 #include "util/types.h"
 #include "kernel/proc_file.h"
 // #include "util/string.h"
+#define HASH_TABLE_SIZE 128
+
+struct hash_node {
+  struct hash_node *next;
+  void *key;
+  void *value;
+};
+
+// this is a generic hash linked table for KERNEL SPACE
+struct hash_table {
+  struct hash_node head[HASH_TABLE_SIZE];
+  int (*virtual_hash_equal)(void *key1, void *key2);
+  size_t (*virtual_hash_func)(void *key);
+  int (*virtual_hash_put)(struct hash_table *hash_table, void *key, void *value);
+  void *(*virtual_hash_get)(struct hash_table *hash_table, void *key);
+  int (*virtual_hash_erase)(struct hash_table *hash_table, void *key);
+};
+
+int hash_table_init(struct hash_table *list, int (*virtual_hash_equal)(void *key1, void *key2),
+                   size_t (*virtual_hash_func)(void *key),
+                   int (*virtual_hash_put)(struct hash_table *hash_table, void *key, void *value),
+                   void *(*virtual_hash_get)(struct hash_table *hash_table, void *key),
+                   int (*virtual_hash_erase)(struct hash_table *hash_table, void *key));
+
+
 
 int printu(const char *s, ...);
 int exit(int code);
@@ -41,6 +66,7 @@ int print_backtrace(int depth);
 
 void* better_malloc(uint64 size);
 void better_free(void* va);
+void *realloc(void *va,uint64 size);
 
 void printpa(int* va);
 
@@ -51,10 +77,9 @@ void sem_V(int num);
 int read_cwd(char *path);
 int change_cwd(const char *path);
 void register_init();
-char getch();
+int getch();
 
 bool __shoutnow();
 
-extern bool print_tp;
 
 #endif

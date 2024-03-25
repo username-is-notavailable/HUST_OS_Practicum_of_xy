@@ -181,6 +181,7 @@ pte_t *page_walk(pagetable_t page_dir, uint64 va, int alloc) {
         memset(pt, 0, PGSIZE);
         // writes the physical address of newly allocated page to pte, to establish the
         // page table tree.
+        // log("pte in page_walk:%p\n",pte);
         *pte = PA2PTE(pt) | PTE_V;
       }else //returns NULL, if alloc == 0, or no more physical page remains
         return 0;

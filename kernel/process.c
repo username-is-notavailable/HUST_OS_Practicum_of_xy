@@ -242,15 +242,24 @@ int do_fork( process* parent)
       case CONTEXT_SEGMENT:
         *child->trapframe = *parent->trapframe;
         break;
-      case STACK_SEGMENT:
+      case STACK_SEGMENT: 
         // user_vm_map(child->pagetable,child->mapped_info[STACK_SEGMENT].va,PGSIZE,
         //   lookup_pa(parent->pagetable, parent->mapped_info[i].va),
         //   prot_to_type(PROT_COW | PROT_READ, 1));
-        for(int page=0;page<parent->mapped_info[STACK_SEGMENT].npages;page++){
-          pte_t *pte=page_walk(child->pagetable,parent->mapped_info[STACK_SEGMENT].va,TRUE);
-          void* pa=(void*)PTE2PA(*pte);
-          memcpy(pa,(void*)lookup_pa(parent->pagetable,parent->mapped_info[STACK_SEGMENT].va+page*PGSIZE),PGSIZE);
+        // for(int page=0;page<parent->mapped_info[STACK_SEGMENT].npages;page++){
+        //   pte_t *pte=page_walk(child->pagetable,parent->mapped_info[STACK_SEGMENT].va,TRUE);
+        //   void* pa=(void*)PTE2PA(*pte);
+        //   memcpy(pa,(void*)lookup_pa(parent->pagetable,parent->mapped_info[STACK_SEGMENT].va+page*PGSIZE),PGSIZE);
+        // }
+        for(uint64 va=parent->mapped_info[STACK_SEGMENT].va;va<child->mapped_info[STACK_SEGMENT].va;va+=PGSIZE){
+          void *pa=alloc_page();
+          memcpy(pa,(void*)lookup_pa(parent->pagetable,va),PGSIZE);
+          user_vm_map(child->pagetable,va,PGSIZE,(uint64)pa,prot_to_type(PROT_WRITE | PROT_READ, 1));
         }
+        memcpy((void*)lookup_pa(child->pagetable,child->mapped_info[STACK_SEGMENT].va),
+          (void*)lookup_pa(parent->pagetable,child->mapped_info[STACK_SEGMENT].va),PGSIZE);
+        child->mapped_info[STACK_SEGMENT].va=parent->mapped_info[STACK_SEGMENT].va;
+        child->mapped_info[STACK_SEGMENT].npages=parent->mapped_info[STACK_SEGMENT].npages;
         break;
       case HEAP_SEGMENT:{
         // build a same heap for child process.
@@ -298,7 +307,8 @@ int do_fork( process* parent)
         // segment of parent process.
         // DO NOT COPY THE PHYSICAL PAGES, JUST MAP THEM.
         //panic( "You need to implement the code segment mapping of child in lab3_1.\n" );
-        user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[CODE_SEGMENT].va, PGSIZE*parent->mapped_info[CODE_SEGMENT].npages, lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),
+        for(int i=0;i<parent->mapped_info[CODE_SEGMENT].npages;i++)
+        user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[CODE_SEGMENT].va+i*PGSIZE, PGSIZE, lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va+i*PGSIZE),
                       prot_to_type(PROT_EXEC | PROT_READ, 1));
         log("do_fork map code segment at pa:%lx of parent to child at va:%lx.\n",lookup_pa(parent->pagetable,parent->mapped_info[CODE_SEGMENT].va),parent->mapped_info[CODE_SEGMENT].va);
         // after mapping, register the vm region (do not delete codes below!)
@@ -311,8 +321,9 @@ int do_fork( process* parent)
       case DATA_SEGMENT:
         log("DATA: va %p npages %d\n",parent->mapped_info[DATA_SEGMENT].va,parent->mapped_info[DATA_SEGMENT].npages);
 
-        user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[DATA_SEGMENT].va, PGSIZE*parent->mapped_info[DATA_SEGMENT].npages, 
-                      lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va),
+        for(int i=0;i<parent->mapped_info[DATA_SEGMENT].npages;i++)
+        user_vm_map((pagetable_t)child->pagetable, parent->mapped_info[DATA_SEGMENT].va+i*PGSIZE, PGSIZE, 
+                      lookup_pa(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va+i*PGSIZE),
                       prot_to_type(PROT_COW | PROT_READ, 1));
         for(int page=0;page<parent->mapped_info[DATA_SEGMENT].npages;page++){
           pte_t *pte=page_walk(parent->pagetable,parent->mapped_info[DATA_SEGMENT].va+page*PGSIZE,FALSE);
@@ -430,14 +441,34 @@ int do_exec(char *command, char *para){
   load_bincode_from_host_elf(current[tp],command);
 
   int len = (strlen(para)/8+1)*8;
+  log("len:%d\n",len);
   uint64 sp=(current[tp]->trapframe->regs.sp-=len);
-  strcpy((char*)user_va_to_pa(current[tp]->pagetable,(void*)sp),para);
-  sp=(current[tp]->trapframe->regs.sp-=8);
-  (*(uint64*)user_va_to_pa(current[tp]->pagetable,(void*)sp))=sp+8;
-  current[tp]->trapframe->regs.a0=1;
+  log("sp:%p\n",sp);
+  char *ppare=(char*)user_va_to_pa(current[tp]->pagetable,(void*)sp), *sp_t=(char*)sp;
+  strcpy(ppare,para);
+
+  int argc=1;
+  char *argv[64];
+  bool last_is_space=TRUE;
+
+  while(*ppare){
+    if(*ppare==' '){
+      if(!last_is_space)argc++;
+      *ppare='\0';
+      last_is_space=TRUE;
+    }
+    else if(last_is_space)argv[argc-1]=sp_t,last_is_space=FALSE;
+    ppare++;
+    sp_t++;
+  }
+  log("argc:%p argv:%p\n",argc,sp);
+  sp=(current[tp]->trapframe->regs.sp-=8*argc);
+  char **pargv=(char**)user_va_to_pa(current[tp]->pagetable,(void*)sp);
+  for(int i=0;i<argc;i++)pargv[i]=argv[i];
+  current[tp]->trapframe->regs.a0=argc;
   current[tp]->trapframe->regs.a1=sp;
 
-  return 0;
+  return argc;
 }
 
 uint64 do_wait(int64 pid){

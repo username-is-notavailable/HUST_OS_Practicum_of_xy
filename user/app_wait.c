@@ -11,7 +11,10 @@
 int flag=0;
 int main(void) {
     flag = 0;
+    char test[4096]="Aaaaaaaaaaa";
+    int test_i=123;
     int pid = fork();
+    printu("%d %s %d\n",pid,test,test_i);
     if (pid == 0) {
         flag = 1;
         pid = fork();
