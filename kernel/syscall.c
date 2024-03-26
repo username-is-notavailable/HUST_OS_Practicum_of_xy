@@ -422,7 +422,8 @@ ssize_t sys_user_ccwd(char *path, uint64 len) {
   char missname[MAX_DENTRY_NAME_LEN];
   char *ppath=(char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, len, TRUE);
   // sprint(ppath);
-  if((cwd=lookup_final_dentry(ppath,&cwd,missname)))
+  if(ppath[0]=='/')cwd=vfs_root_dentry;
+  if((cwd=lookup_final_dentry(ppath,&cwd,missname))&&cwd->dentry_inode->type==DIR_I)
     current[tp]->pfiles->cwd=cwd;
   sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)path, (void*)ppath, len, FALSE);
   return 0;

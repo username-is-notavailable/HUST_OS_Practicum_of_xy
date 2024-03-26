@@ -531,6 +531,7 @@ struct dentry *lookup_final_dentry(const char *path, struct dentry **parent,
   while (token != NULL) {
     // log("%s\n",token);
     *parent = this;
+    if(!this)return NULL;
     if(!strcmp(token,"."))
       this=this;
     else if(!strcmp(token,".."))
