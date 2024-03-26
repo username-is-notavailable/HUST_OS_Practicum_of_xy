@@ -449,17 +449,16 @@ int do_exec(char *command, char *para){
   char *ppare=(char*)user_va_to_pa(current[tp]->pagetable,(void*)sp), *sp_t=(char*)sp;
   strcpy(ppare,para);
 
-  int argc=1;
+  int argc=0;
   char *argv[64];
   bool last_is_space=TRUE;
 
   while(*ppare){
     if(*ppare==' '){
-      if(!last_is_space)argc++;
       *ppare='\0';
       last_is_space=TRUE;
     }
-    else if(last_is_space)argv[argc-1]=sp_t,last_is_space=FALSE;
+    else if(last_is_space)argv[argc++]=sp_t,last_is_space=FALSE;
     ppare++;
     sp_t++;
   }
