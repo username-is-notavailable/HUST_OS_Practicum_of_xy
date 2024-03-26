@@ -13,7 +13,7 @@ static void debug_line(uint64 mepc) {
     if((line+i)->addr==mepc)break;
   }
   if(i>=current[tp]->line_ind){
-    log("unknow error! mepc:%lx\n", mepc);
+    sprint("unknow error! mepc:%lx\n", mepc);
     return ;
   }
   // log("line: %d\n", (line+i)->line);
@@ -41,7 +41,7 @@ static void debug_line(uint64 mepc) {
       char printstring[1024];
       memcpy(printstring,file_content+line_f,line_r-line_f);
       printstring[line_r-line_f]=0;
-      log("Runtime error at %s:%d\n%s\n",path,line_num,printstring);
+      sprint("Runtime error at %s:%d\n%s\n",path,line_num,printstring);
       break;
     }
     line_f=(++line_r);

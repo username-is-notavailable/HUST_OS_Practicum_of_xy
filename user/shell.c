@@ -19,7 +19,6 @@ typedef struct parse_str_t{
 
 
 void get_input(char *buf);
-int get_frag(char *des, char *buf, int pos, int spilt);
 bool is_contain(char *longer, char *shorter);
 void get_base_name(const char *path, char *base_name);
 size_t hash_function(void* key);
@@ -103,14 +102,20 @@ void get_input(char *buf){
                 }
                 break;
             case '\t':
-                int pt,flen=get_frag(temp_str,buf,p,' '),find=0;
+                int pt,temp_len,find=0,temp_first=p;
                 char base_name[128];
-                pt=flen-1;
+
+                while(temp_first>0&&buf[temp_first-1]!=' ')temp_first--;
+
+                for(temp_len=0;temp_first<p;temp_len++,temp_first++)temp_str[temp_len]=buf[temp_first];
+                temp_str[temp_len]='\0';
+                // printu("\ntemp_str:%s %d\n",temp_str,temp_len);
+                pt=temp_len-1;
                 while(pt>0&&temp_str[pt]!='/')pt--;
                 strcpy(base_name,temp_str+pt+(temp_str[pt]=='/'?1:0));
-                // printu(" %s",base_name);
-                temp_str[flen-strlen(base_name)]='\0';
-                // printu("%s",temp_str);
+                // printu("%s\n",base_name);
+                temp_str[temp_len-strlen(base_name)]='\0';
+                // printu("%s\n",temp_str);
                 int fd = opendir_u(temp_str);
                 // printu("%s %d\n",temp_str,fd);
                 if(fd<0)break;
@@ -126,11 +131,36 @@ void get_input(char *buf){
                         else{
                             if(find==1)printu("\n%s\n",temp_str);
                             printu("%s\n",d.name);
+                            int i=0;
+                            while(temp_str[i]&&d.name[i]&&temp_str[i]==d.name[i])i++;
+                            temp_str[i]='\0';
                             find++;
                         }
                     }
                 }
-                if(find==1){
+                // if(find==1){
+                //     // printu("base_name:%s temp_str:%s\n",base_name,temp_str);
+                //     int base_len=strlen(base_name), insert_len=strlen(temp_str)-base_len;
+                //     for(int i=len;i>=p;i--)buf[i+insert_len]=buf[i];
+                //     len+=insert_len;
+                //     for(int i=0;i<insert_len;i++)buf[p+i]=temp_str[base_len+i];
+                //     int ret_len=printu("%s",buf+p)-insert_len;
+                //     p+=insert_len;
+                //     // printu("(%d)",ret_len);
+                //     for(int i=0;i<ret_len;i++)printu("\b");
+                // }
+                // else if(find){
+                //     INFO(cwd);
+                //     printu("%s",buf);
+                //     for(int i=0;i<len-p;i++)printu("\b");
+                // }
+
+                if(find){
+                    if(find>1){
+                        INFO(cwd);
+                        printu("%s",buf);
+                        for(int i=0;i<len-p;i++)printu("\b");
+                    }
                     // printu("base_name:%s temp_str:%s\n",base_name,temp_str);
                     int base_len=strlen(base_name), insert_len=strlen(temp_str)-base_len;
                     for(int i=len;i>=p;i--)buf[i+insert_len]=buf[i];
@@ -140,11 +170,6 @@ void get_input(char *buf){
                     p+=insert_len;
                     // printu("(%d)",ret_len);
                     for(int i=0;i<ret_len;i++)printu("\b");
-                }
-                else if(find){
-                    INFO(cwd);
-                    printu("%s",buf);
-                    for(int i=0;i<len-p;i++)printu("\b");
                 }
                 
                 if(fd>=0)closedir_u(fd);
@@ -164,15 +189,6 @@ void get_input(char *buf){
         }
     }
     
-}
-
-int get_frag(char *des, char *buf, int pos, int spilt){
-    int i=pos;
-    while(i>0&&buf[i-1]!=spilt)i--;
-    
-    for(int j=0;i<pos;j++,i++)des[j]=buf[i];
-    des[i]='\0';
-    return i;
 }
 
 bool is_contain(char *longer, char *shorter){
@@ -304,6 +320,7 @@ void do_command(char *command){
     // printu("%s\n",command);
     char command_t[2048];
     replace_global_va(command_t,command);
+    // printu("%s\n",command_t);
     parse_str *words=parse_string(command_t, ' ', TRUE);
     char *word = get_string(words);
     // printu("%s\n",word);
@@ -356,17 +373,20 @@ void do_command(char *command){
                 free_parse_str(p);
             }
         }
-        else strcmp(path,word);
-        if(fd<0)printu("Cannot find %s\n!",word);
+        else strcpy(path,word);
+        // printu("path%s word:%s\n",path,word);
+        if(fd<0)printu("Cannot find %s!\n",word);
         else{
             close(fd);
             int pid=fork();
-            if(pid==0)
+            if(pid==0){
                 // printu("%s %s",path,command_t);
                 exec(path,command_t);
+            }
             else wait(pid);
         }
     }
+    free_parse_str(words);
 }
 
 char *replace_global_va(char *des, char *src){
