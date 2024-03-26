@@ -1,7 +1,7 @@
 /*This is a simple shell*/
 
-#include "user_config.h"
-#include "user_lib.h"
+#include "user/user_config.h"
+#include "user/user_lib.h"
 #include "util/types.h"
 #include "util/string.h"
 

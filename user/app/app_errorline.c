@@ -3,7 +3,7 @@
  * This app attempts to issue M-mode instruction in U-mode, and consequently raises an exception.
  */
 
-#include "user_lib.h"
+#include "user/user_lib.h"
 #include "util/types.h"
 
 int main(void) {

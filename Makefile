@@ -77,14 +77,22 @@ USER_LIB  		:= user/user_lib.c
 
 USER_LIB_OBJ    := $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_LIB)))
 
-USER_A_CPPS		:= $(filter-out user/user_lib.c,$(wildcard  user/*.c)) 
+USER_APP_CPPS	:= $(wildcard  user/app/*.c) 
 
-USER_A_OBJS     := $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_A_CPPS)))
+USER_BIN_CPPS	:= $(wildcard  user/bin/*.c)
 
-USER_A_CPPS     := $(basename $(notdir $(USER_A_CPPS)))
+USER_APP_OBJS     := $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_APP_CPPS)))
+
+USER_BIN_OBJS     := $(addprefix $(OBJ_DIR)/, $(patsubst %.c,%.o,$(USER_BIN_CPPS)))
+
+USER_APP_CPPS     := $(basename $(notdir $(USER_APP_CPPS)))
+
+USER_BIN_CPPS     := $(basename $(notdir $(USER_BIN_CPPS)))
 
 
-USER_A_TARGET   := $(HOSTFS_ROOT)/bin/$(patsubst %.c,%,$(USER_A_CPPS))
+USER_APP_TARGET     := $(HOSTFS_ROOT)/app/$(patsubst %.c,%,$(USER_APP_CPPS))
+
+USER_BIN_TARGET     := $(HOSTFS_ROOT)/bin/$(patsubst %.c,%,$(USER_BIN_CPPS))
 
 # USER_E_CPPS 		:= user/app_ls.c user/user_lib.c
 
@@ -128,7 +136,8 @@ $(OBJ_DIR):
 	@-mkdir -p $(dir $(UTIL_OBJS))
 	@-mkdir -p $(dir $(SPIKE_INF_OBJS))
 	@-mkdir -p $(dir $(KERNEL_OBJS))
-	@-mkdir -p $(dir $(USER_A_OBJS))
+	@-mkdir -p $(dir $(USER_APP_OBJS))
+	@-mkdir -p $(dir $(USER_BIN_OBJS))
 	
 $(OBJ_DIR)/%.o : %.c
 	@echo "compiling" $< 
@@ -165,10 +174,17 @@ $(KERNEL_TARGET): $(OBJ_DIR) $(UTIL_LIB) $(SPIKE_INF_LIB) $(KERNEL_OBJS) $(KERNE
 # 	@echo "User app has been built into" \"$@\"
 # 	@cp $@ $(OBJ_DIR)
 
-$(USER_A_TARGET):$(USER_LIB_OBJ) $(UTIL_LIB) $(OBJ_DIR) $(USER_A_OBJS)
-	@for item in $(USER_A_CPPS);do \
+$(USER_APP_TARGET):$(USER_LIB_OBJ) $(UTIL_LIB) $(OBJ_DIR) $(USER_APP_OBJS)
+	@for item in $(USER_APP_CPPS);do \
+		mkdir -p $(HOSTFS_ROOT)/app; \
+		$(COMPILE) --entry=main  obj/user/app/$$item.o  $(USER_LIB_OBJ) $(UTIL_LIB) -o $(HOSTFS_ROOT)/app/$$item;\
+		cp $(HOSTFS_ROOT)/app/$$item $(OBJ_DIR);\
+		done
+
+$(USER_BIN_TARGET):$(USER_LIB_OBJ) $(UTIL_LIB) $(OBJ_DIR) $(USER_BIN_OBJS)
+	@for item in $(USER_BIN_CPPS);do \
 		mkdir -p $(HOSTFS_ROOT)/bin; \
-		$(COMPILE) --entry=main  obj/user/$$item.o  $(USER_LIB_OBJ) $(UTIL_LIB) -o $(HOSTFS_ROOT)/bin/$$item;\
+		$(COMPILE) --entry=main  obj/user/bin/$$item.o  $(USER_LIB_OBJ) $(UTIL_LIB) -o $(HOSTFS_ROOT)/bin/$$item;\
 		cp $(HOSTFS_ROOT)/bin/$$item $(OBJ_DIR);\
 		done
 	
@@ -227,7 +243,7 @@ $(USER_S_TARGET): $(OBJ_DIR) $(UTIL_LIB) $(USER_S_OBJS)\
 # test:$(KERNEL_TARGET) $(USER_LIB_OBJ)  $(USER_A_TARGET)
 # .PHONY:test
 
-all: $(KERNEL_TARGET) $(USER_A_TARGET) $(USER_LIB_OBJ)
+all: $(KERNEL_TARGET) $(USER_APP_TARGET) $(USER_BIN_TARGET) $(USER_LIB_OBJ)
 .PHONY:all
 
 run: $(KERNEL_TARGET) $(USER_TARGET) $(USER_E_TARGET) $(USER_M_TARGET) $(USER_T_TARGET) $(USER_C_TARGET) $(USER_O_TARGET) $(USER_S_TARGET)
@@ -263,4 +279,4 @@ format:
 	@python ./format.py ./
 
 clean:
-	rm -fr ${OBJ_DIR} ${HOSTFS_ROOT}/bin
+	rm -fr ${OBJ_DIR} ${HOSTFS_ROOT}/bin ${HOSTFS_ROOT}/app

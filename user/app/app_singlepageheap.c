@@ -3,7 +3,7 @@
  * This app performs malloc memory.
  */
 
-#include "user_lib.h"
+#include "user/user_lib.h"
 #include "util/string.h"
 
 typedef unsigned long long uint64;
