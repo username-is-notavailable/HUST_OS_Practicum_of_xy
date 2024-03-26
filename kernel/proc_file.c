@@ -81,14 +81,14 @@ struct file *get_opened_file(int fd) {
 //
 int do_open(char *pathname, int flags) {
 
-  char path[256];
-  memset(path,0,256);
-  if(pathname[0]!='/')
-    get_path(path,current[read_tp()]->pfiles->cwd);
-  strcat(path,pathname);
+  // char path[256];
+  // memset(path,0,256);
+  // if(pathname[0]!='/')
+  //   get_path(path,current[read_tp()]->pfiles->cwd);
+  // strcat(path,pathname);
 
   struct file *opened_file = NULL;
-  if ((opened_file = vfs_open(path, flags)) == NULL) return -1;
+  if ((opened_file = vfs_open(pathname, flags)) == NULL) return -1;
 
   uint64 tp=read_tp();
 

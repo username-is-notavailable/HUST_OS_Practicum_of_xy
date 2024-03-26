@@ -11,6 +11,7 @@
 #include "util/hash_table.h"
 #include "riscv.h"
 #include "util/snprintf.h"
+#include "process.h"
 #include <stdarg.h>
 
 struct file *log_file[NCPU];
@@ -116,6 +117,8 @@ struct super_block *vfs_mount(const char *dev_name, int mnt_type) {
 struct file *vfs_open(const char *path, int flags) {
   struct dentry *parent = vfs_root_dentry; // we start the path lookup from root.
   char miss_name[MAX_PATH_LEN];
+
+  if(path[0]!='/')parent=current[read_tp()]->pfiles->cwd;
 
   // path lookup.
   struct dentry *file_dentry = lookup_final_dentry(path, &parent, miss_name);
@@ -408,6 +411,11 @@ int vfs_close(struct file *file) {
 struct file *vfs_opendir(const char *path) {
   struct dentry *parent = vfs_root_dentry;
   char miss_name[MAX_PATH_LEN];
+
+  if(path[0]!='/')parent=current[read_tp()]->pfiles->cwd;
+
+  char temppppp[256];
+  log("search from %s\n",get_path(temppppp,parent));
 
   // lookup the dir
   struct dentry *file_dentry = lookup_final_dentry(path, &parent, miss_name);

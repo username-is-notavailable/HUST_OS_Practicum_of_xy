@@ -2,9 +2,11 @@
 #include "util/string.h"
 
 int main(int argc, char *argv[]){
+    // printu("start\n");
     char path[256];
     if(argc<2) read_cwd(path); 
     else strcpy(path,argv[1]);
+    // printu("%s\n",path);
     int dir_fd = opendir_u(path);
     if(dir_fd<0){
         printu("Cannot open dir %s!\n",path);

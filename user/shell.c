@@ -116,7 +116,7 @@ void get_input(char *buf){
                 if(fd<0)break;
                 struct dir d;
                 while(readdir_u(fd,&d)==0){
-                    if(d.type==DIR_I)strcat(temp_str,"/");
+                    if(d.type==DIR_I)strcat(d.name,"/");
                     // printu("\n %s %s\n",d.name,base_name);
                     if(is_contain(d.name,base_name)){
                         if(find==0){
@@ -131,6 +131,7 @@ void get_input(char *buf){
                     }
                 }
                 if(find==1){
+                    // printu("base_name:%s temp_str:%s\n",base_name,temp_str);
                     int base_len=strlen(base_name), insert_len=strlen(temp_str)-base_len;
                     for(int i=len;i>=p;i--)buf[i+insert_len]=buf[i];
                     len+=insert_len;
@@ -334,15 +335,37 @@ void do_command(char *command){
         change_cwd(word);
     }
     else{
-        char path[256];
-        strprint(path,"/bin/%s",word);
+        // char path[256];
+        // strprint(path,"/bin/%s",word);
         // printu("%s\n",path);
         // printu("%s %s",path,command_t);
-        int pid=fork();
-        if(pid==0)
-            // printu("%s %s",path,command_t);
-            exec(path,command_t);
-        else wait(pid);
+        int fd=open(word,O_RDONLY);
+        char path[256],*temp_path;
+        if(fd<0){
+            char *PATH=get_global_var("PATH");
+            if(PATH){
+                parse_str *p=parse_string(PATH,':',TRUE);
+                while((temp_path=get_string(p))){
+                    strcpy(path,temp_path);
+                    int len = strlen(path);
+                    path[len]='/';
+                    path[len+1]='\0';
+                    strcat(path,word);
+                    if((fd=open(path,O_RDONLY))>0)break;
+                }
+                free_parse_str(p);
+            }
+        }
+        else strcmp(path,word);
+        if(fd<0)printu("Cannot find %s\n!",word);
+        else{
+            close(fd);
+            int pid=fork();
+            if(pid==0)
+                // printu("%s %s",path,command_t);
+                exec(path,command_t);
+            else wait(pid);
+        }
     }
 }
 
