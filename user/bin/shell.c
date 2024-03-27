@@ -17,6 +17,13 @@ typedef struct parse_str_t{
     bool alloc;
 }parse_str;
 
+typedef struct input_buf_t{
+    char buf[SHELL_BUF_MAX];
+    struct input_buf_t *pre,*next;
+}input_buf;
+
+input_buf *cur, *last, *first;
+uint64 histories_num=1;
 
 void get_input(char *buf);
 bool is_contain(char *longer, char *shorter);
@@ -36,7 +43,6 @@ static int hash_free_erase(struct hash_table *hash_table, void *key);
 static struct hash_table __global_variables;
 
 int main(int arg, char *argv[]){
-    char input_buf[SHELL_BUF_MAX],path[SHELL_BUF_MAX*2];
     bool shutdown=FALSE;
     hash_table_init(&__global_variables,
         hash_equal,
@@ -51,10 +57,27 @@ int main(int arg, char *argv[]){
     for(int i=0;i<HASH_TABLE_SIZE;i++)
         for(struct hash_node *p=(__global_variables.head+i)->next;p;p=p->next)printu("%s = %s\n",p->key,p->value);
 
+    cur=last=first=better_malloc(sizeof(input_buf));
+    
+    cur->next=cur->pre=NULL;
+    if(!cur){
+        printu("Error when allocate buffer for input!\n");
+        exit(-1);
+    }
+    
+    char shell_buf[SHELL_BUF_MAX];
+
     while (!shutdown){
-        get_input(input_buf);
+        get_input(shell_buf);
         // printu("%s\n",input_buf);
-        do_command(input_buf);
+        cur=last;
+        strcpy(cur->buf,shell_buf);
+        cur=better_malloc(sizeof(input_buf));
+        cur->pre=last;
+        last->next=cur;
+        cur->next=NULL;
+        last=cur;
+        do_command(shell_buf);
         
     }
 }
@@ -91,8 +114,28 @@ void get_input(char *buf){
                 if(temp==0x5b){
                     temp=getch();
                     // printu("[%x]",temp);
-                    if(temp==0x41)/*上*/;
-                    if(temp==0x42)/*下*/;
+                    if(temp==0x41)/*上*/{
+                        if(cur&&cur->pre){
+                            printu(buf+p);
+                            for (uint64 i = 0; i < len; i++)printu("\b \b");
+                            strcpy(cur->buf,buf);
+                            cur=cur->pre;
+                            strcpy(buf,cur->buf);
+                            printu(buf);
+                            len=p=strlen(buf);
+                        }
+                    }
+                    if(temp==0x42)/*下*/{
+                        if(cur&&cur->next){
+                            printu(buf+p);
+                            for (uint64 i = 0; i < len; i++)printu("\b \b");
+                            strcpy(cur->buf,buf);
+                            cur=cur->next;
+                            strcpy(buf,cur->buf);
+                            printu(buf);
+                            len=p=strlen(buf);
+                        }
+                    }
                     if(temp==0x43&&p<len)/*右*/printu("%c",buf[p++]);
                     if(temp==0x44&&p>0)/*左*/{
                         // printu("%d %d",p,len);
