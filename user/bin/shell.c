@@ -70,6 +70,12 @@ int main(int arg, char *argv[]){
     while (!shutdown){
         get_input(shell_buf);
         // printu("%s\n",input_buf);
+        if(++histories_num>MOST_HISTORIES){
+            cur=first;
+            first=first->next;
+            better_free(cur);
+            histories_num--;
+        }
         cur=last;
         strcpy(cur->buf,shell_buf);
         cur=better_malloc(sizeof(input_buf));
