@@ -240,7 +240,10 @@ int do_fork( process* parent)
     // map its code segment.
     switch( parent->mapped_info[i].seg_type ){
       case CONTEXT_SEGMENT:
-        *child->trapframe = *parent->trapframe;
+        child->trapframe->epc=parent->trapframe->epc;
+        child->trapframe->kernel_satp=parent->trapframe->kernel_satp;
+        child->trapframe->kernel_trap=parent->trapframe->kernel_trap;
+        child->trapframe->regs=parent->trapframe->regs;
         break;
       case STACK_SEGMENT: 
         // user_vm_map(child->pagetable,child->mapped_info[STACK_SEGMENT].va,PGSIZE,
