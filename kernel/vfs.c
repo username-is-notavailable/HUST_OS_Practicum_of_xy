@@ -461,6 +461,8 @@ int vfs_mkdir(const char *path) {
   struct dentry *parent = vfs_root_dentry;
   char miss_name[MAX_PATH_LEN];
 
+  if(path[0]!='/')parent=current[read_tp()]->pfiles->cwd;
+
   // lookup the dir, find its parent direntry
   struct dentry *file_dentry = lookup_final_dentry(path, &parent, miss_name);
   if (file_dentry) {
