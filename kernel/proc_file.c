@@ -167,7 +167,10 @@ int do_disk_stat(int fd, struct istat *istat) {
 //
 int do_close(int fd) {
   struct file *pfile = get_opened_file(fd);
-  return vfs_close(pfile);
+  int ret = vfs_close(pfile);
+  pfile->status=FD_NONE;
+  current[read_tp()]->pfiles->nfiles--;
+  return ret;
 }
 
 //

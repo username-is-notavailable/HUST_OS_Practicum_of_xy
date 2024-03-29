@@ -52,7 +52,8 @@ int spike_file_close(spike_file_t* f) {
 }
 
 void spike_file_decref(spike_file_t* f) {
-  if (atomic_add(&f->refcnt, -1) == 2) {
+  atomic_add(&f->refcnt, -1);
+  if (f->refcnt == 2) {
     int kfd = f->kfd;
     mb();
     atomic_set(&f->refcnt, 0);
