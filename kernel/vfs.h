@@ -9,7 +9,7 @@
 #define MAX_DEVICE_NAME_LEN 30    // the maximum length of device name
 #define MAX_MOUNTS 10             // the maximum number of mounts
 #define MAX_DENTRY_HASH_SIZE 100  // the maximum size of dentry hash table
-#define MAX_PATH_LEN 30           // the maximum length of path
+#define MAX_PATH_LEN 128           // the maximum length of path
 #define MAX_SUPPORTED_FS 10       // the maximum number of supported file systems
 
 #define DIRECT_BLKNUM 10          // the number of direct blocks

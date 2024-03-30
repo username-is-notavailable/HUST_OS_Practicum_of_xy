@@ -456,7 +456,8 @@ char *replace_global_va(char *des, char *src){
             if(*src=='\0')break;
         }
         else *(p++)=*(src++);
-    }    
+    }
+    // printu("command %s\n",des);
     *p='\0';
     return des;
 }
