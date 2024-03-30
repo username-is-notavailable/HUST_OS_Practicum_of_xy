@@ -366,6 +366,7 @@ int source(char *path){
 }
 
 void do_command(char *command){
+    if(!strlen(command))return ;
     // printu("%s\n",command);
     char command_t[2048];
     replace_global_va(command_t,command);
