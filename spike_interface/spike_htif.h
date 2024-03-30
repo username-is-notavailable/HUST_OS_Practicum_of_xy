@@ -85,6 +85,7 @@
 #define HTIFSYS_lstat 1039
 #define HTIFSYS_time 1062
 
+#define HTIFSYS_get_stdin_buf 2045
 #define HTIFSYS_readdir 2046
 #define HTIFSYS_wait_for_a_key 2047
 

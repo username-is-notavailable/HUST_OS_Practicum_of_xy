@@ -334,7 +334,9 @@ void register_init(){
 }
 
 int getch(){
-  return do_user_call(SYS_user_ask_for_a_key,0,0,0,0,0,0,0);
+  char c;
+  while((c=do_user_call(SYS_user_ask_for_a_key,0,0,0,0,0,0,0))==0);
+  return c;
 }
 
 static int default_equal(void *key1, void *key2) { return key1 == key2; }

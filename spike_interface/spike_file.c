@@ -167,3 +167,7 @@ spike_file_t* spike_file_get(int fd) {
 uint64 spike_wait_for_a_key(){
   return frontend_syscall(HTIFSYS_wait_for_a_key, 0, 0, 0, 0, 0, 0, 0);
 }
+
+int spike_get_stdin_buf(char *buf, int max_len){
+  return frontend_syscall(HTIFSYS_get_stdin_buf, (uint64)buf, max_len, 0, 0, 0, 0, 0);
+}

@@ -66,5 +66,6 @@ int spike_file_readdir(char *path, char *d_name, int *offset, char *type);
 int spike_file_mkdir(const char* fn, int mode);
 int spike_file_link(const char* old, const char* new, int flag);
 int spike_file_unlink(const char* name, int flag);
+int spike_get_stdin_buf(char *buf, int max_len);
 
 #endif
