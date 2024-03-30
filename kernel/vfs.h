@@ -211,6 +211,8 @@ void get_base_name(const char *path, char *base_name);
 
 char *get_path(char* path, struct dentry *p_dentry);
 
+void stdio_init();
+
 extern struct file *log_file[NCPU];
 
 enum LOG_MODE{
@@ -222,5 +224,9 @@ enum LOG_MODE{
 extern int log_mode;
 
 void log(const char *s,...);
+
+extern struct dentry *dstdin;
+extern struct dentry *dstdout;
+extern struct dentry *dstderr;
 
 #endif

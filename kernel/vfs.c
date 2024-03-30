@@ -12,6 +12,7 @@
 #include "riscv.h"
 #include "util/snprintf.h"
 #include "process.h"
+#include "hostfs.h"
 #include <stdarg.h>
 
 struct file *log_file[NCPU];
@@ -21,6 +22,10 @@ struct super_block *vfs_sb_list[MAX_MOUNTS];  // system superblock list
 struct device *vfs_dev_list[MAX_VFS_DEV];     // system device list in vfs layer
 struct hash_table dentry_hash_table;
 struct hash_table vinode_hash_table;
+
+struct dentry *dstdin;
+struct dentry *dstdout;
+struct dentry *dstderr;
 
 //
 // initializes the dentry hash list and vinode hash list
@@ -33,8 +38,23 @@ int vfs_init() {
 
   ret = hash_table_init(&vinode_hash_table, vinode_hash_equal, vinode_hash_func,
                             NULL, NULL, NULL);
+  
   if (ret != 0) return ret;
   return 0; 
+}
+
+void stdio_init(){
+  dstdin = alloc_vfs_dentry("stdin", NULL, vfs_root_dentry);
+  dstdin->dentry_inode = hostfs_alloc_vinode(vfs_root_dentry->sb);
+  dstdin->dentry_inode->i_fs_info = stdin;
+
+  dstderr = alloc_vfs_dentry("stderr", NULL, vfs_root_dentry);
+  dstderr->dentry_inode = hostfs_alloc_vinode(vfs_root_dentry->sb);
+  dstderr->dentry_inode->i_fs_info = stderr;
+
+  dstdout = alloc_vfs_dentry("stdout", NULL, vfs_root_dentry);
+  dstdout->dentry_inode = hostfs_alloc_vinode(vfs_root_dentry->sb);
+  dstdout->dentry_inode->i_fs_info = stdout;
 }
 
 //

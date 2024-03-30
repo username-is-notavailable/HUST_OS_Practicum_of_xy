@@ -62,7 +62,8 @@ ssize_t sys_user_print(const char* buf, size_t n) {
   uint64 tp=read_tp();
   assert( current[tp] );
   char* pa = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, n+1, TRUE);
-  sprint(pa);
+  // sprint(pa);
+  do_write(STDERR_FD,pa,strlen(pa)+1);
   sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, pa, n+1,FALSE);
   return n;
 }

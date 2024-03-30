@@ -18,6 +18,10 @@ extern spike_file_t spike_files[];
 
 #define ENOMEM 12 /* Out of memory */
 
+#define STDIN_FD 0
+#define STDOUT_FD 1
+#define STDERR_FD 2
+
 #define stdin (spike_files + 0)
 #define stdout (spike_files + 1)
 #define stderr (spike_files + 2)

@@ -114,6 +114,8 @@ int s_start(void) {
     // init file system, added @lab4_1
     fs_init();
 
+    stdio_init();
+
     vfs_mkdir(LOG_DIR_PATH);
 
     char log_config_path[256];
@@ -147,6 +149,7 @@ int s_start(void) {
   log("Switch to user mode...\n");
   // the application code (elf) is first loaded into memory, and then put into execution
   // added @lab3_1
+
   sprint("\n====================== Start ======================\n\n");
   insert_to_ready_queue( load_user_program() );
   schedule();
