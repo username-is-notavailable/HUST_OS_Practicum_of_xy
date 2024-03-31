@@ -73,6 +73,7 @@ process* load_user_program() {
   process* proc;
 
   proc = alloc_process();
+  // sync_barrier(&test,NCPU);
   log("User application is loading.\n");
 
   arg_buf arg_bug_msg;
@@ -85,6 +86,7 @@ process* load_user_program() {
   return proc;
 }
 
+int proc_barrier=0;
 //
 // s_start: S-mode entry point of riscv-pke OS kernel.
 //
@@ -120,6 +122,9 @@ int s_start(void) {
 
     char log_config_path[256];
 
+    // added @lab3_1
+    init_proc_pool();
+
   }
 
   sync_barrier(&s_start_barrier,NCPU);
@@ -141,16 +146,13 @@ int s_start(void) {
   // the code now formally works in paging mode, meaning the page table is now in use.
   log("kernel page table is on \n");
 
-  // added @lab3_1
-  init_proc_pool();
-
   vm_alloc_stage[tp]=1;
 
   log("Switch to user mode...\n");
   // the application code (elf) is first loaded into memory, and then put into execution
   // added @lab3_1
 
-  sprint("\n====================== Start ======================\n\n");
+  sync_barrier(&proc_barrier,NCPU);
   insert_to_ready_queue( load_user_program() );
   schedule();
 

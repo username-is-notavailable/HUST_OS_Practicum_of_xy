@@ -539,6 +539,31 @@ int vfs_closedir(struct file *file) {
   return 0;
 }
 
+char *strtok_multycore(char* str, const char* delim) {
+  static char* current[NCPU];
+  uint64 tp=read_tp();
+  if (str != NULL) current[tp] = str;
+  if (current[tp] == NULL) return NULL;
+
+  char* start = current[tp];
+  while (*start != '\0' && strchr(delim, *start) != NULL) start++;
+
+  if (*start == '\0') {
+    current[tp] = NULL;
+    return current[tp];
+  }
+
+  char* end = start;
+  while (*end != '\0' && strchr(delim, *end) == NULL) end++;
+
+  if (*end != '\0') {
+    *end = '\0';
+    current[tp] = end + 1;
+  } else
+    current[tp] = NULL;
+  return start;
+}
+
 //
 // lookup the "path" and return its dentry (or NULL if not found).
 // the lookup starts from parent, and stop till the full "path" is parsed.
@@ -555,7 +580,7 @@ struct dentry *lookup_final_dentry(const char *path, struct dentry **parent,
   // for example, when input path is: /RAMDISK0/test_dir/ramfile2
   // strtok() outputs three tokens: 1)RAMDISK0, 2)test_dir and 3)ramfile2
   // at its three continuous invocations.
-  char *token = strtok(path_copy, "/");
+  char *token = strtok_multycore(path_copy, "/");
   struct dentry *this = *parent;
 
   while (token != NULL) {
@@ -598,7 +623,7 @@ struct dentry *lookup_final_dentry(const char *path, struct dentry **parent,
       }
     }
     // get next token
-      token = strtok(NULL, "/");
+      token = strtok_multycore(NULL, "/");
   }
   return this;
 }
@@ -610,11 +635,11 @@ void get_base_name(const char *path, char *base_name) {
   char path_copy[MAX_PATH_LEN];
   strcpy(path_copy, path);
 
-  char *token = strtok(path_copy, "/");
+  char *token = strtok_multycore(path_copy, "/");
   char *last_token = NULL;
   while (token != NULL) {
     last_token = token;
-    token = strtok(NULL, "/");
+    token = strtok_multycore(NULL, "/");
   }
 
   strcpy(base_name, last_token);
@@ -780,7 +805,7 @@ char* get_path(char *path, struct dentry* p_dentry) {
 
 struct file_system_type *fs_list[MAX_SUPPORTED_FS];
 
-int log_mode=TO_FILE_SYSTEM;
+int log_mode=TO_CONSOLE;
 
 void log(const char *s,...){
   if(log_mode==NO_LOG)return;

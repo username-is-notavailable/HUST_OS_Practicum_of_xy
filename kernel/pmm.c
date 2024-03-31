@@ -77,13 +77,14 @@ static void *__alloc_p(uint64 pages){
     temp->next=p->next;
     temp->pages=p->pages-pages;
     pre->next=temp;
+    // log("alloc_page: %p\n", p);
     spinlock_unlock(&g_free_mem_list_lock);
     return (void*)p;
   }
   pre->next=p->next;
 
   spinlock_unlock(&g_free_mem_list_lock);
-  // sprint("alloc_page: %p\n", p);
+  // log("alloc_page: %p\n", p);
   return (void*)p;
 }
 
@@ -184,7 +185,7 @@ void free_page(void *pa) {
   // n->next = g_free_mem_list.next;
   // g_free_mem_list.next = n;
 
-  // sprint("free>>>%p\n",pa);
+  // log("free>>>%p\n",pa);
   pmm_manager *p=pmm_hash_get(pa);
   if(!p)panic("free_page 0x%lx \n", pa);
 
@@ -236,6 +237,7 @@ void *alloc_pages(uint64 pages) {
 
   pmm_hash_put(p,pages);
 
+  // log("alloc:%p\n",p);
   return (void *)p;
 }
 

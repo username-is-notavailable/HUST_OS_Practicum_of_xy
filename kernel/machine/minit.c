@@ -109,9 +109,9 @@ void m_start(uintptr_t hartid, uintptr_t dtb) {
 
   sync_barrier(&barrier,NCPU);
 
-  log("In m_start, hartid:%d\n", hartid);
-
   write_tp(hartid);
+
+  log("In m_start, hartid:%d\n", hartid);
 
   // save the address of trap frame for interrupt in M mode to "mscratch". added @lab1_2
   write_csr(mscratch, &g_itrframe);
