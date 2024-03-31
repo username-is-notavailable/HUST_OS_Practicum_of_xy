@@ -395,3 +395,7 @@ int hash_table_init(struct hash_table *list,
   list->virtual_hash_erase = erase ? erase : default_erase;
   return 0;
 }
+
+void ps(int fd){
+  
+}

@@ -365,6 +365,8 @@ int do_fork( process* parent)
 
   child->pfiles->cwd=parent->pfiles->cwd;
 
+  strcpy(child->CMD,parent->CMD);
+
   insert_to_ready_queue( child );
 
   return child->pid;

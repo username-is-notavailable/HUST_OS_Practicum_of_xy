@@ -78,6 +78,7 @@ int read_cwd(char *path);
 int change_cwd(const char *path);
 void register_init();
 int getch();
+void ps(int fd);
 
 bool __shoutnow();
 

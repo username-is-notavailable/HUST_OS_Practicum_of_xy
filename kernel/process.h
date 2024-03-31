@@ -131,6 +131,8 @@ typedef struct process_t {
   struct process_t *sibling;
 
   struct process_t *zombie_children;
+
+  char CMD[128];
   
 }process;
 

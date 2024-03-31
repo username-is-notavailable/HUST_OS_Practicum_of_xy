@@ -434,6 +434,10 @@ int sys_reclaim_subprocess(int pid){
   return do_sys_reclaim_subprocess(pid);
 }
 
+int sys_ps(int fd){
+  
+}
+
 extern bool __shutdown[NCPU];
 
 //
@@ -510,6 +514,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return register_init_process();
     case SYS_user_ask_for_a_key:
       return spike_wait_for_a_key();
+    case SYS_user_ps:
+      return sys_ps(a0);
     default:
       panic("Unknown syscall %ld \n", a0);
   }
