@@ -57,6 +57,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
   log("handle_page_fault: %lx\n", stval);
   switch (mcause) {
     case CAUSE_STORE_PAGE_FAULT:
+    {
       // TODO (lab2_3): implement the operations that solve the page fault to
       // dynamically increase application stack.
       // hint: first allocate a new physical page, and then, maps the new page to the
@@ -96,7 +97,7 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
         current[tp]->mapped_info[STACK_SEGMENT].va=vist_page_va;
       }
       // sprint("!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-      
+    }
       break;
     default:
       log("unknown page fault.\n");
@@ -116,7 +117,6 @@ void rrsched() {
   uint64 tp=read_tp();
   if(++current[tp]->tick_count>=TIME_SLICE_LEN){
     current[tp]->tick_count=0;
-    current[tp]->status=READY;
     insert_to_ready_queue(current[tp]);
     schedule();
   }

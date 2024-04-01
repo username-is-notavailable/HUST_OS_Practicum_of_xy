@@ -397,5 +397,5 @@ int hash_table_init(struct hash_table *list,
 }
 
 void ps(int fd){
-  
+  do_user_call(SYS_user_ps,fd,0,0,0,0,0,0);
 }

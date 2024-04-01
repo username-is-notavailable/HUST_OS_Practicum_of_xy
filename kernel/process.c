@@ -20,6 +20,8 @@
 #include "spike_interface/spike_utils.h"
 #include "spike_interface/atomic.h"
 #include "sync_utils.h"
+#include "util/string.h"
+#include "vfs.h"
 
 //Two functions defined in kernel/usertrap.S
 extern char smode_trap_vector[];
@@ -549,4 +551,36 @@ int do_sys_reclaim_subprocess(int pid){
   current[tp]->waiting_for_child=0;
 
   return pid;
+}
+
+int do_ps(int fd){
+  log("write ps to fd %d\n",fd);
+  spinlock_lock(&procs_status_lock);
+  for(int i=0;i<NPROC;i++){
+    if(procs[i].status==FREE||procs[i].status==UNAVAILABLE)continue;
+    int pid_width=9;
+    char pid[pid_width+1];
+    memset(pid, ' ', pid_width + 1);
+    pid[pid_width] = '\0';
+    int pid_len=strprint(pid,"%d",procs[i].pid);
+    if(pid_len<pid_width)pid[pid_len]=' ';
+    do_write(fd,pid,strlen(pid));
+
+    int stat_width=12;
+    char stats[stat_width + 1];
+    memset(stats, ' ', stat_width + 1);
+    stats[stat_width] = '\0';
+    if(procs[i].status==RUNNING)strcpy(stats,"RUNNING");
+    else if(procs[i].status==BLOCKED)strcpy(stats,"BLOCKED");
+    else if(procs[i].status==READY)strcpy(stats,"READY");
+    else if(procs[i].status==ZOMBIE)strcpy(stats,"ZOMBIE");
+    stats[strlen(stats)]=' ';
+    do_write(fd,stats,strlen(stats));
+
+    do_write(fd,procs[i].CMD,strlen(procs[i].CMD));
+    do_write(fd,"\n",1);
+
+  }
+  spinlock_unlock(&procs_status_lock);
+  return 0;
 }

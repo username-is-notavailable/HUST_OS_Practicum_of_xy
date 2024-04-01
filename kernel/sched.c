@@ -6,6 +6,7 @@
 #include "spike_interface/spike_utils.h"
 #include "spike_interface/atomic.h"
 #include "sync_utils.h"
+#include "process.h"
 
 process* ready_queue_head[NCPU] = {NULL};
 
@@ -19,7 +20,9 @@ void insert_to_ready_queue( process* proc ) {
   log( "going to insert process %d to ready queue.\n", proc->pid );
   // if the queue is empty in the beginning
   if( ready_queue_head[tp] == NULL ){
+    spinlock_lock(&procs_status_lock);
     proc->status = READY;
+    spinlock_unlock(&procs_status_lock);
     proc->queue_next = NULL;
     ready_queue_head[tp] = proc;
     return;
@@ -34,7 +37,9 @@ void insert_to_ready_queue( process* proc ) {
   // p points to the last element of the ready queue
   if( p==proc ) return;
   p->queue_next = proc;
+  spinlock_lock(&procs_status_lock);
   proc->status = READY;
+  spinlock_unlock(&procs_status_lock);
   proc->queue_next = NULL;
 
   return;
@@ -56,12 +61,14 @@ void schedule() {
     // FREE and ZOMBIE, we should shutdown the emulated RISC-V machine.
     int should_shutdown = 1;
 
+    spinlock_lock(&procs_status_lock);
     for( int i=0; i<NPROC; i++ )
       if( (procs[i].status != FREE) && (procs[i].status != ZOMBIE) ){
         should_shutdown = 0;
         log( "ready queue empty, but process %d is not in free/zombie state:%d\n", 
           i, procs[i].status );
       }
+    spinlock_unlock(&procs_status_lock);
     sync_barrier(&shutdown_barrier,NCPU);
     if( should_shutdown ){
       if(tp==0){
@@ -75,10 +82,12 @@ void schedule() {
   }
 
   current[tp] = ready_queue_head[tp];
+  spinlock_lock(&procs_status_lock);
   assert( current[tp]->status == READY );
   ready_queue_head[tp] = ready_queue_head[tp]->queue_next;
 
   current[tp]->status = RUNNING;
+  spinlock_unlock(&procs_status_lock);
   log( "going to schedule process %d to run.\n", current[tp]->pid );
   switch_to( current[tp] );
 }

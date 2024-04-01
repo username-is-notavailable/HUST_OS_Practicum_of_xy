@@ -3,6 +3,8 @@
 
 #include "riscv.h"
 #include "proc_file.h"
+#include "sync_utils.h"
+#include "spike_interface/atomic.h"
 
 typedef struct trapframe_t {
   // space to store context (all common registers)
@@ -166,5 +168,9 @@ int register_init_process();
 extern process* current[NCPU];
 
 extern semaphores sems[MAX_SEMAPHORES_NUM];
+
+extern spinlock_t procs_status_lock;
+
+int do_ps(int fd);
 
 #endif

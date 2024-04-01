@@ -49,18 +49,18 @@ proc_file_management *init_proc_file_management(void) {
   pfiles->opened_files[0].f_dentry=dstdin;
   pfiles->opened_files[0].status=FD_OPENED;
   pfiles->opened_files[0].readable=1;
-  pfiles->opened_files[0].writable=0;
+  pfiles->opened_files[0].writable=1;
   pfiles->opened_files[0].offset=0;
 
   pfiles->opened_files[1].f_dentry=dstdout;
   pfiles->opened_files[1].status=FD_OPENED;
-  pfiles->opened_files[1].readable=0;
+  pfiles->opened_files[1].readable=1;
   pfiles->opened_files[1].writable=1;
   pfiles->opened_files[1].offset=0;
 
   pfiles->opened_files[2].f_dentry=dstderr;
   pfiles->opened_files[2].status=FD_OPENED;
-  pfiles->opened_files[2].readable=0;
+  pfiles->opened_files[2].readable=1;
   pfiles->opened_files[2].writable=1;
   pfiles->opened_files[2].offset=0;
 

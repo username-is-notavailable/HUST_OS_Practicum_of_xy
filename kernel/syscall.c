@@ -63,7 +63,7 @@ ssize_t sys_user_print(const char* buf, size_t n) {
   assert( current[tp] );
   char* pa = (char*)sys_read_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, n+1, TRUE);
   // sprint(pa);
-  do_write(STDERR_FD,pa,strlen(pa)+1);
+  do_write(STDERR_FD,pa,strlen(pa));
   sys_write_back_user_mem((pagetable_t)(current[tp]->pagetable), (void*)buf, pa, n+1,FALSE);
   return n;
 }
@@ -133,7 +133,6 @@ ssize_t sys_user_yield() {
   // the rear of ready queue, and finally, schedule a READY process to run.
   // panic( "You need to implement the yield syscall in lab3_2.\n" );
   uint64 tp=read_tp();
-  current[tp]->status=READY;
   insert_to_ready_queue(current[tp]);
   schedule();
   return 0;
@@ -361,7 +360,9 @@ uint64 sys_user_sem_P(uint64 num){
   sems[num].sem--;
   if(sems[num].sem<0){
     // sprint("[%d,%d]\n",num,sems[num].sem);
+    spinlock_lock(&procs_status_lock);
     current[tp]->status=BLOCKED;
+    spinlock_unlock(&procs_status_lock);
     if(sems[num].wait_queue){
       process *p=sems[num].wait_queue;
       while(p->queue_next)p=p->queue_next;
@@ -388,7 +389,6 @@ uint64 sys_user_sem_V(uint64 num){
     process *p=sems[num].wait_queue;
     // if(num==0)log("sem[0]:%d\n",sems[0].sem);
     sems[num].wait_queue=p->queue_next;
-    p->status=READY;
     // sprint("insert--------------------------------------------------------------\n");
     insert_to_ready_queue(p);
 
@@ -435,7 +435,8 @@ int sys_reclaim_subprocess(int pid){
 }
 
 int sys_ps(int fd){
-  
+  do_ps(fd);
+  return 0;
 }
 
 extern bool __shutdown[NCPU];
@@ -493,7 +494,7 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
     case SYS_user_wait:
       return sys_user_wait(a1);
     case SYS_user_backtrace:
-      return sys_user_print_backtrace(a0);
+      return sys_user_print_backtrace(a1);
     case SYS_user_printpa:
       return sys_user_printpa(a1);
     case SYS_user_sem_new:
@@ -515,7 +516,7 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
     case SYS_user_ask_for_a_key:
       return spike_wait_for_a_key();
     case SYS_user_ps:
-      return sys_ps(a0);
+      return sys_ps(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

@@ -805,7 +805,7 @@ char* get_path(char *path, struct dentry* p_dentry) {
 
 struct file_system_type *fs_list[MAX_SUPPORTED_FS];
 
-int log_mode=TO_CONSOLE;
+int log_mode=TO_FILE_SYSTEM;
 
 void log(const char *s,...){
   if(log_mode==NO_LOG)return;
