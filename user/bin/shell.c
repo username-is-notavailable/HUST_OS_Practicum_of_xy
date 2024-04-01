@@ -405,6 +405,11 @@ void do_command(char *command){
     else if(!strcmp(word,"shutdown")){
         set__shutnow();
     }
+    else if(!strcmp(word,"pwd")){
+        char pwd[128];
+        read_cwd(pwd);
+        printu("%s\n",pwd);
+    }
     else{
         // char path[256];
         // strprint(path,"/bin/%s",word);
