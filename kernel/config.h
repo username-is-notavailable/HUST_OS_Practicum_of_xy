@@ -2,10 +2,10 @@
 #define _CONFIG_H_
 
 // we use only two HART (cpu) in fundamental experiments
-#define NCPU 1
+#define NCPU 2
 
 //interval of timer interrupt. added @lab1_3
-#define TIMER_INTERVAL 1000
+#define TIMER_INTERVAL 100000
 
 // the maximum memory space that PKE is allowed to manage. added @lab2_1
 #define PKE_MAX_ALLOWABLE_RAM 128 * 1024 * 1024

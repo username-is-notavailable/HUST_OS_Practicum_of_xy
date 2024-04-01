@@ -80,7 +80,7 @@ void register_init();
 int getch();
 void ps(int fd);
 
-bool __shoutnow();
-
+bool __shutnow();
+void set__shutnow();
 
 #endif

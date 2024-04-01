@@ -356,13 +356,11 @@ uint64 sys_user_new_sem(int64 init){
 
 uint64 sys_user_sem_P(uint64 num){
   uint64 tp=read_tp();
+  spinlock_lock(&semaphores_lock);
   assert(sems[num].is_aviliable==FALSE);
   sems[num].sem--;
   if(sems[num].sem<0){
     // sprint("[%d,%d]\n",num,sems[num].sem);
-    spinlock_lock(&procs_status_lock);
-    current[tp]->status=BLOCKED;
-    spinlock_unlock(&procs_status_lock);
     if(sems[num].wait_queue){
       process *p=sems[num].wait_queue;
       while(p->queue_next)p=p->queue_next;
@@ -373,30 +371,37 @@ uint64 sys_user_sem_P(uint64 num){
       sems[num].wait_queue=current[tp];
       current[tp]->queue_next=NULL;
     }
+    spinlock_unlock(&semaphores_lock);
+
+    spinlock_lock(&procs_status_lock);
+    current[tp]->status=BLOCKED;
+    spinlock_unlock(&procs_status_lock);
     schedule();
   }
 
   // sprint("                                P sems%d :%d\n",num,sems[num].sem);
-
+  spinlock_unlock(&semaphores_lock);
   return 0;
 }
 
 uint64 sys_user_sem_V(uint64 num){
+  process *p=NULL;
+  spinlock_lock(&semaphores_lock);
   assert(sems[num].is_aviliable==FALSE);
   if(sems[num].sem<0){
     // sprint("adfasdfsdfadfas");
     assert(sems[num].wait_queue);
-    process *p=sems[num].wait_queue;
+    p=sems[num].wait_queue;
     // if(num==0)log("sem[0]:%d\n",sems[0].sem);
     sems[num].wait_queue=p->queue_next;
     // sprint("insert--------------------------------------------------------------\n");
-    insert_to_ready_queue(p);
 
   }
   sems[num].sem++;
+  spinlock_unlock(&semaphores_lock);
   // sprint("here\n");
   // sprint("                                V sems%d :%d\n",num,sems[num].sem);
-
+  if(p)insert_to_ready_queue(p);
   return 0;
 }
 
@@ -439,8 +444,15 @@ int sys_ps(int fd){
   return 0;
 }
 
-extern bool __shutdown[NCPU];
+extern bool __shutdown;
+spinlock_t s_lock=SPINLOCK_INIT;
 
+int _shutdown_(){
+  spinlock_lock(&s_lock);
+  __shutdown=TRUE;
+  spinlock_unlock(&s_lock);
+  return 0;
+}
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -510,14 +522,19 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
     case SYS_reclaim_subprocess:
       return sys_reclaim_subprocess(a1);
     case SHOULD_SHUTDOWN:
-      return __shutdown[read_tp()];
+      spinlock_lock(&s_lock);
+      bool ret = __shutdown;
+      spinlock_unlock(&s_lock);
+      return ret;
     case REGISTER_INIT:
       return register_init_process();
     case SYS_user_ask_for_a_key:
       return spike_wait_for_a_key();
     case SYS_user_ps:
       return sys_ps(a1);
+    case SYS_user_shoutdown:
+      return _shutdown_();
     default:
-      panic("Unknown syscall %ld \n", a0);
+      panic("Unknown syscall %p \n", a0);
   }
 }

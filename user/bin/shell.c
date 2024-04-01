@@ -43,7 +43,7 @@ static int hash_free_erase(struct hash_table *hash_table, void *key);
 static struct hash_table __global_variables;
 
 int main(int arg, char *argv[]){
-    bool shutdown=FALSE;
+    printu("\n\n================start================\n");
     hash_table_init(&__global_variables,
         hash_equal,
         hash_function,
@@ -54,8 +54,8 @@ int main(int arg, char *argv[]){
 
     source("/etc/profile");
 
-    for(int i=0;i<HASH_TABLE_SIZE;i++)
-        for(struct hash_node *p=(__global_variables.head+i)->next;p;p=p->next)printu("%s = %s\n",p->key,p->value);
+    // for(int i=0;i<HASH_TABLE_SIZE;i++)
+    //     for(struct hash_node *p=(__global_variables.head+i)->next;p;p=p->next)printu("%s = %s\n",p->key,p->value);
 
     cur=last=first=better_malloc(sizeof(input_buf));
     
@@ -67,7 +67,7 @@ int main(int arg, char *argv[]){
     
     char shell_buf[SHELL_BUF_MAX];
 
-    while (!shutdown){
+    while (!__shutnow()){
         get_input(shell_buf);
         // printu("%s\n",input_buf);
         if(++histories_num>MOST_HISTORIES){
@@ -86,6 +86,7 @@ int main(int arg, char *argv[]){
         do_command(shell_buf);
         
     }
+    exit(0);
 }
 
 void get_input(char *buf){
@@ -400,6 +401,9 @@ void do_command(char *command){
             return;
         }
         change_cwd(word);
+    }
+    else if(!strcmp(word,"shutdown")){
+        set__shutnow();
     }
     else{
         // char path[256];

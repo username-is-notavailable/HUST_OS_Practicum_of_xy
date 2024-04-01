@@ -2,12 +2,8 @@
 #include "user/user_lib.h"
 
 int main(void){
-    if(fork()==0){
-        exec("/bin/shell","");
-    }
-    register_init();
     while(!__shutnow()){
-        wait(-1);
+        yield();
     }
     exit(0);
 }

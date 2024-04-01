@@ -26,7 +26,7 @@ extern char trap_sec_start[];
 
 static int s_start_barrier=0;
 
-bool __shutdown[NCPU];
+bool __shutdown;
 
 //
 // turn on paging. added @lab2_1
@@ -93,7 +93,6 @@ int proc_barrier=0;
 int s_start(void) {
 
   uint64 tp=read_tp();
-  __shutdown[tp]=FALSE;
 
   sprint("hartid = %d: Enter supervisor mode...\n",tp);
   // sprint("Enter supervisor mode...\n");
@@ -103,6 +102,7 @@ int s_start(void) {
   write_csr(satp, 0);
 
   if(tp==0){
+    __shutdown=FALSE;
     // init phisical memory manager
     pmm_init();
 

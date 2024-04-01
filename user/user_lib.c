@@ -325,8 +325,12 @@ int change_cwd(const char *path) {
   return do_user_call(SYS_user_ccwd, (uint64)path, strlen(path)+1, 0, 0, 0, 0, 0);
 }
 
-bool __shoutnow(){
+bool __shutnow(){
   return do_user_call(SHOULD_SHUTDOWN, 0, 0, 0, 0, 0, 0, 0);
+}
+
+void set__shutnow(){
+  do_user_call(SYS_user_shoutdown, 0, 0, 0, 0, 0, 0, 0);
 }
 
 void register_init(){

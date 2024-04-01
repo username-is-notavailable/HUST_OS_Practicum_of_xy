@@ -15,6 +15,4 @@ void free_page(void* pa);
 
 void *alloc_pages(uint64 pages);
 
-void *realloc_pages(void *pa, uint64 pages);
-
 #endif

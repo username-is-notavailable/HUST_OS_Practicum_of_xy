@@ -85,7 +85,7 @@ void switch_to(process* proc) {
   // return_to_user() is defined in kernel/strap_vector.S. switch to user mode with sret.
   // note, return_to_user takes two parameters @ and after lab2_1.
 
-  log("return_to_user%p\n",return_to_user);
+  // log("return_to_user\n");
 
   return_to_user(proc->trapframe, user_satp);
 }

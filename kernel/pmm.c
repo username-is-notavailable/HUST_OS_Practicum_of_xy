@@ -89,19 +89,22 @@ static void *__alloc_p(uint64 pages){
 }
 
 void add_free_managers(void *pa){
-  if(free_manager_list.next)panic("Needn't add free managers!\n");
+  spinlock_lock(&manager_lock);
+  if(free_manager_list.next){
+    spinlock_unlock(&manager_lock);
+    return;
+  }
   pmm_manager *p=(pmm_manager*)ROUNDDOWN((uint64)pa,PGSIZE);
   for(int i=0;i<PGSIZE/sizeof(pmm_manager);i++,p++){
     p->next=free_manager_list.next;
     free_manager_list.next=p;
   }
+  spinlock_unlock(&manager_lock);
 }
 
 void pmm_hash_put(void*pa,uint64 pages){
+  add_free_managers(__alloc_p(1));
   spinlock_lock(&manager_lock);
-  if(!free_manager_list.next){
-    add_free_managers(__alloc_p(1));
-  }
   pmm_manager *p=free_manager_list.next;
   free_manager_list.next=p->next;
   p->pa=pa;
@@ -177,6 +180,7 @@ pmm_manager *pmm_hash_get(void*pa){
 // place a physical page at *pa to the free list of g_free_mem_list (to reclaim the page)
 //
 void free_page(void *pa) {
+  // log("free>>>%p\n",pa);
   if (((uint64)pa % PGSIZE) != 0 || (uint64)pa < free_mem_start_addr || (uint64)pa >= free_mem_end_addr)
     panic("free_page 0x%lx \n", pa);
 
@@ -185,9 +189,8 @@ void free_page(void *pa) {
   // n->next = g_free_mem_list.next;
   // g_free_mem_list.next = n;
 
-  // log("free>>>%p\n",pa);
   pmm_manager *p=pmm_hash_get(pa);
-  if(!p)panic("free_page 0x%lx \n", pa);
+  if(!p)return;
 
   // sprint("%d>>>free_page 0x%lx \n",read_tp(), pa);
 
@@ -217,10 +220,8 @@ void free_page(void *pa) {
     npre->pages+=new_node->pages;
   }
 
-  pmm_hash_erase(p);
-
   spinlock_unlock(&g_free_mem_list_lock);
-
+  pmm_hash_erase(p);
 }
 
 //
@@ -239,39 +240,6 @@ void *alloc_pages(uint64 pages) {
 
   // log("alloc:%p\n",p);
   return (void *)p;
-}
-
-void *realloc_pages(void *pa, uint64 pages){
-  spinlock_lock(&manager_lock);
-  pmm_manager *m=pmm_hash_get(pa);
-  if(!m)panic("reallocte error pa");
-  if(m->pages>=pages){
-    spinlock_unlock(&manager_lock);
-    return pa;
-  }
-  spinlock_lock(&g_free_mem_list_lock);
-  list_node *pre=&g_free_mem_list,*p=pre->next;
-  while(p&&(void*)p<pa)pre=p,p=p->next;
-  if(p&&(pa+m->pages)==p&&p->pages>=(pages-m->pages)){
-    if(p->pages==(pages-m->pages)){
-      pre->next=p->next;
-      m->pages=pages;
-      spinlock_unlock(&g_free_mem_list_lock);
-      spinlock_unlock(&manager_lock);
-      return pa;
-    }
-  }
-
-  spinlock_unlock(&g_free_mem_list_lock);
-  spinlock_unlock(&manager_lock);
-
-  void *new_mem=(void*)alloc_pages(pages);
-
-  memcpy(new_mem, pa, m->pages*PGSIZE);
-
-  free_page(pa);
-
-  return new_mem;
 }
 
 //
