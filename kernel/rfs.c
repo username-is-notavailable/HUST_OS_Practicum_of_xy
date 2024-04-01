@@ -825,7 +825,7 @@ struct vinode *rfs_mkdir(struct vinode *parent, struct dentry *sub_dentry) {
   int free_inum = 0;
   for (int i = 0; i < (RFS_BLKSIZE / RFS_INODESIZE * RFS_MAX_INODE_BLKNUM); i++) {
     free_dinode = rfs_read_dinode(rdev, i);
-    sprint("mldir_rdev:%p\n",rdev);
+    // sprint("mldir_rdev:%p\n",rdev);
     if (free_dinode->type == R_FREE) {  // found
       free_inum = i;
       break;

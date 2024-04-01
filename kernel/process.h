@@ -22,7 +22,7 @@ typedef struct trapframe_t {
 }trapframe;
 
 // riscv-pke kernel supports at most 32 processes
-#define NPROC 32
+#define NPROC 512
 // maximum number of pages in a process's heap
 #define MAX_HEAP_PAGES 32
 
